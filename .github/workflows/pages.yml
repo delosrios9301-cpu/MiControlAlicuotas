@@ -1,0 +1,41 @@
+name: Publicar Mi Control de Alícuotas
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+      - name: Preparar sitio sin datos clínicos
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
+          test -f site/index.html
+          test -f site/app.js
+          test -f site/sw.js
+          test ! -e site/bridge
+          test ! -e site/INICIAR-CON-EXCEL.bat
+          test ! -e site/firebase/firestore.rules
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+      - name: Subir web estática
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
