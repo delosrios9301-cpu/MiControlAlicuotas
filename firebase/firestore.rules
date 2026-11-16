@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /owners/{ownerId}/entries/{entryId} {
+      // Solo la cuenta propietaria puede consultar y escribir sus datos.
+      allow read: if request.auth != null && request.auth.uid == ownerId;
+      allow create, update: if request.auth != null && request.auth.uid == ownerId
+        && request.resource.data.keys().hasOnly(['table','recordId','payload','revision','deleted','syncedAt'])
+        && request.resource.data.keys().hasAll(['table','recordId','payload','revision','deleted','syncedAt'])
+        && request.resource.data.table in ['records','shifts','freezers','audit','mirrors']
+        && request.resource.data.recordId is string
+        && request.resource.data.recordId.size() <= 1500
+        && request.resource.data.payload is string
+        && request.resource.data.payload.size() < 900000
+        && request.resource.data.revision is string
+        && request.resource.data.deleted is bool
+        && request.resource.data.syncedAt == request.time;
+      allow delete: if false;
+    }
+  }
+}
