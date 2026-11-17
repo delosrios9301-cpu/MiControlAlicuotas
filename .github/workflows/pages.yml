@@ -27,9 +27,18 @@ jobs:
           test -f site/index.html
           test -f site/app.js
           test -f site/sw.js
+          test -f site/firebase-config.js
           test ! -e site/bridge
           test ! -e site/INICIAR-CON-EXCEL.bat
           test ! -e site/firebase/firestore.rules
+          if find site -type f \( -iname "*.xlsx" -o -iname "*.xlsm" -o -iname "*.sqlite3" -o -iname "*.db" \) | grep -q .; then
+            echo "::error::Se detectó un archivo Excel o una base local en la carpeta web."
+            exit 1
+          fi
+      - name: Configurar automáticamente la clave web PÚBLICA cuando exista
+        env:
+          FIREBASE_WEB_API_KEY: ${{ vars.FIREBASE_WEB_API_KEY }}
+        run: python3 .github/scripts/inject_firebase_config.py
       - name: Configurar Pages
         uses: actions/configure-pages@v5
       - name: Subir web estática

@@ -1,8 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Acceso exclusivamente a la cuenta autenticada dueña de sus registros.
+    // Todo lo que no coincida con esta ruta se rechaza.
     match /owners/{ownerId}/entries/{entryId} {
-      // Solo la cuenta propietaria puede consultar y escribir sus datos.
       allow read: if request.auth != null && request.auth.uid == ownerId;
       allow create, update: if request.auth != null && request.auth.uid == ownerId
         && request.resource.data.keys().hasOnly(['table','recordId','payload','revision','deleted','syncedAt'])
@@ -15,6 +16,7 @@ service cloud.firestore {
         && request.resource.data.revision is string
         && request.resource.data.deleted is bool
         && request.resource.data.syncedAt == request.time;
+      // El borrado lógico se controla desde la aplicación con trazabilidad.
       allow delete: if false;
     }
   }
