@@ -22,6 +22,19 @@ class TestOneDriveBridge(unittest.TestCase):
         self.assertEqual(rows[0][1],4)
         self.assertEqual(rows[0][2]['subject'],'FICTICIO-1')
 
+    def test_first_column_blank_does_not_fail(self):
+        # Las primeras celdas de una fila pueden estar vacías sin invalidar los demás campos.
+        wb=Workbook()
+        sh=wb.active
+        sh.title='ALMACENAMIENTO DE ALICUOTAS'
+        sh['D4']='FICTICIO-SIN-COLUMNA-B'
+        data=io.BytesIO()
+        wb.save(data)
+        rows=extract_rows(data.getvalue())
+        self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0][1],4)
+        self.assertEqual(rows[0][2]['subject'],'FICTICIO-SIN-COLUMNA-B')
+
     def test_no_blank(self):
         self.assertIsNone(row_data('SALIDA DE MUESTRA', ['']*13))
 
