@@ -54,13 +54,12 @@ def extract_rows(content):
             if sheet not in workbook.sheetnames:
                 continue
             sh = workbook[sheet]
-            for row in sh.iter_rows(min_row=4,
+            for number, row in enumerate(sh.iter_rows(min_row=4,
                         min_col=openpyxl.utils.column_index_from_string(start),
-                        max_col=openpyxl.utils.column_index_from_string(end), values_only=False):
+                        max_col=openpyxl.utils.column_index_from_string(end), values_only=True), start=4):
                 if not row:
                     continue
-                number = row[0].row
-                data = row_data(sheet, [cell.value for cell in row])
+                data = row_data(sheet, row)
                 if data is not None:
                     result.append((sheet, number, data))
         return result
