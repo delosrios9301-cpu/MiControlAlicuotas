@@ -1,5 +1,7 @@
 name: Probar conector OneDrive (datos ficticios)
 on:
+  push:
+    branches: [feature/onedrive-cloud-sync]
   pull_request:
     paths:
       - 'onedrive-sync/**'
