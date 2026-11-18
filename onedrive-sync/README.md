@@ -4,6 +4,14 @@ Este componente se ejecuta en GitHub Actions y lee **un único Excel XLSX desde 
 
 La información **no se imprime en logs, no se guarda en GitHub y no se incluye en GitHub Pages**. Solo se escribe, con autorización, en documentos privados `owners/{uid}/entries/{sha256('mirrors\n'+id)}` de Firestore, con tipo `mirrors`, que la PWA ya presenta en «Sincronización → Cambios de Excel recibidos». Nunca marca congelaciones ni inventario como confirmados. No modifica el Excel.
 
+## Cuenta confirmada: OneDrive personal (Outlook)
+
+Para registrar la integración se necesita una aplicación en Microsoft Entra que admita **cuentas personales de Microsoft** (o cuentas de organizaciones y personales). Este acceso no se obtiene por estar conectado a Firebase ni por compartir el Excel. La cuenta Outlook debe conceder autorización mediante Microsoft OAuth 2.0, sin introducir su contraseña en la aplicación ni en GitHub.
+
+**Alcance real del consentimiento:** el permiso delegado `Files.Read` puede autorizar lectura de los archivos de OneDrive de la cuenta, no exclusivamente del Excel seleccionado. El programa está diseñado para **descargar únicamente el archivo identificado por `ONEDRIVE_DRIVE_ID` y `ONEDRIVE_ITEM_ID`**; esos identificadores no reducen técnicamente los privilegios del token. Si el propietario no acepta ese alcance, no activar esta solución. Nunca solicitar vínculos públicos de un Excel clínico.
+
+El registro de aplicaciones requiere acceso a Microsoft Entra (puede necesitar un inquilino/alta de Azure). **No contratar ni habilitar servicios de pago** para completar este paso; detener si se exige una suscripción o método de pago. Verificar antes de habilitar el workflow.
+
 ## Estado actual
 
 **Seguro y desactivado.** El workflow no ejecuta ninguna lectura ni transmisión mientras `MCA_ONEDRIVE_SYNC_ENABLED` no sea `true`. No se ha autenticado una cuenta Microsoft ni probado el archivo real. No se han subido datos reales.
