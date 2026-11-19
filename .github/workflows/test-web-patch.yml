@@ -26,6 +26,10 @@ jobs:
           sed -n '1,18p' site/cloud.js
           grep -nE 'docName|fetchOne|readableTables|const tables=|function unpack|applyCloudRow|sourceOrigin|mirrors' site/cloud.js | head -40 || true
           grep -nE 'rows=S.captures|renderCloudPanel|Sincronización y recuperación' site/app.js | cut -c 1-450 | head -12 || true
+          sed -n '67,78p' site/cloud.js
+          sed -n '110,143p' site/cloud.js
+          sed -n '55,67p' site/app.js | cut -c 1-650
+          sed -n '1,8p' site/db.js
       - name: Verificar correccion y sintaxis sin conectar a Firebase
         run: |
           python3 .github/scripts/patch_web_cloud.py
