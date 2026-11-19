@@ -75,6 +75,37 @@ class TestOneDriveBridge(unittest.TestCase):
         self.assertEqual(a,source_id('drive','item','SALIDA DE MUESTRA',4))
         self.assertNotEqual(a,source_id('drive','item','SALIDA DE MUESTRA',5))
 
+    def test_historial_detalla_campos_sin_copiar_valores_anteriores(self):
+        initial={'study':'FICTICIO','subject':'SUJETO-TEST','qty':2,'sheetKind':'aliquot'}
+        first=mirror_payload('id','prueba.xlsx','ALMACENAMIENTO DE ALICUOTAS',4,initial)
+        self.assertEqual(first['changeHistory'][0]['kind'],'registro_inicial')
+        self.assertEqual(first['changedFields'],['qty','study','subject'])
+        modified=dict(initial,qty=3)
+        second=mirror_payload('id','prueba.xlsx','ALMACENAMIENTO DE ALICUOTAS',4,modified,first)
+        self.assertEqual(second['changedFields'],['qty'])
+        self.assertEqual(second['changeHistory'][-1]['kind'],'actualizacion')
+        self.assertEqual(len(second['changeHistory']),2)
+        self.assertNotIn('SUJETO-TEST',str(second['changeHistory']))
+        self.assertNotIn('qty: 2',str(second['changeHistory']))
+
+    def test_historial_conserva_ultimas_cincuenta_actualizaciones(self):
+        row={'study':'FICTICIO','subject':'PRUEBA','qty':1}
+        prior=mirror_payload('id','test.xlsx','ALMACENAMIENTO DE ALICUOTAS',4,row)
+        for quantity in range(2,65):
+            row=dict(row,qty=quantity)
+            prior=mirror_payload('id','test.xlsx','ALMACENAMIENTO DE ALICUOTAS',4,row,prior)
+        self.assertEqual(len(prior['changeHistory']),50)
+        self.assertEqual(prior['changedFields'],['qty'])
+        self.assertTrue(all(item['fields'] == ['qty'] for item in prior['changeHistory']))
+
+    def test_revision_previamente_aprobada_se_reabre_al_modificar_excel(self):
+        original=mirror_payload('id','prueba.xlsx','SALIDA DE MUESTRA',4,{'subject':'FICTICIO','qty':1})
+        original['reviewedAt']='2026-11-19T01:00:00+00:00'
+        updated=mirror_payload('id','prueba.xlsx','SALIDA DE MUESTRA',4,{'subject':'FICTICIO','qty':2},original)
+        self.assertIsNone(updated['reviewedAt'])
+        self.assertIsNotNone(updated['reviewNote'])
+        self.assertEqual(updated['changeHistory'][-1]['fields'],['qty'])
+
     def test_mirror_no_freezing(self):
         v=mirror_payload('id','ficticio.xlsx','SALIDA DE MUESTRA',4,{'study':'X'})
         self.assertEqual(v['sourceOrigin'],'onedrive')
