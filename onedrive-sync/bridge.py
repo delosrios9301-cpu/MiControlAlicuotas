@@ -219,7 +219,38 @@ def previous_data(doc):
     return obj, doc.get('updateTime')
 
 def mirror_payload(rid, source_name, sheet, number, data, prior=None):
+    """Registrar qué campos cambiaron en cada lectura del Excel.
+
+    Este historial conserva únicamente el nombre de los campos modificados,
+    no copias de los valores clínicos anteriores. Un cambio no guardado o
+    sobrescrito entre dos revisiones de OneDrive no puede recuperarse.
+    """
     now = dt.datetime.now(dt.timezone.utc).isoformat()
+    previous = (prior or {}).get('data') or {}
+    changed_fields = sorted(
+        key for key in data
+        if key != 'sheetKind' and (
+            prior is None and str(data.get(key, '')).strip()
+            or prior is not None and data.get(key) != previous.get(key)
+        )
+    )
+    history = (prior or {}).get('changeHistory')
+    if not isinstance(history, list):
+        history = []
+    # Limitar tamaño y normalizar datos antiguos; no incluir valores de pacientes.
+    history = [
+        {'at': item['at'], 'fields': item['fields'], 'kind': item['kind']}
+        for item in history[-49:]
+        if isinstance(item, dict)
+        and isinstance(item.get('at'), str)
+        and isinstance(item.get('fields'), list)
+        and item.get('kind') in ('registro_inicial', 'actualizacion')
+    ]
+    history.append({
+        'at': now,
+        'kind': 'actualizacion' if prior else 'registro_inicial',
+        'fields': changed_fields,
+    })
     return {
         'id': rid, 'sourceBook': source_name, 'sourceSheet': sheet,
         'sourceRow': number, 'sourceEventId': 0, 'timestamp': now,
@@ -229,6 +260,8 @@ def mirror_payload(rid, source_name, sheet, number, data, prior=None):
         'reviewNote': 'El Excel cambió después de revisión.' if prior and prior.get('reviewedAt') else None,
         'reviewedAt': None, 'sourceOrigin': 'onedrive',
         'sourceLocalId': f'{sheet}|{number}',
+        'changedFields': changed_fields,
+        'changeHistory': history,
     }
 
 def put_mirror(base, rid, value, update_time=None):
