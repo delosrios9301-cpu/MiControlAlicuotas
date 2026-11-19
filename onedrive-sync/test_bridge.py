@@ -1,7 +1,9 @@
 import io
 import unittest
+from unittest import mock
+from types import SimpleNamespace
 from openpyxl import Workbook
-from bridge import extract_rows, source_id, row_data, mirror_payload
+from bridge import extract_rows, source_id, row_data, mirror_payload, validated_rclone_path, rclone_file, source_reference, row_fingerprints, validate_no_moved_rows
 
 class TestOneDriveBridge(unittest.TestCase):
     def workbook(self):
@@ -34,6 +36,36 @@ class TestOneDriveBridge(unittest.TestCase):
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0][1],4)
         self.assertEqual(rows[0][2]['subject'],'FICTICIO-SIN-COLUMNA-B')
+
+    def test_rclone_rejects_unsafe_paths(self):
+        for path in ('../pacientes.xlsx', '/privado.xlsx', 'libro.xlsm', 'C:/datos.xlsx', 'carpeta\\\\datos.xlsx', ''):
+            with self.subTest(path=path), mock.patch.dict('os.environ', {'ONEDRIVE_RELATIVE_PATH':path}):
+                with self.assertRaises(ValueError):
+                    validated_rclone_path()
+
+    def test_rclone_fetch_uses_selected_excel_only(self):
+        with mock.patch.dict('os.environ',{
+            'ONEDRIVE_RELATIVE_PATH':'Trabajo/Copia.xlsx',
+            'RCLONE_CONFIG_ONEDRIVE_TOKEN':'{"refresh_token":"test-ficticio"}',
+            'ONEDRIVE_DRIVE_ID':'drive-prueba',
+            'ONEDRIVE_ACCESS_METHOD':'rclone'}), mock.patch(
+                'bridge.subprocess.run',
+                return_value=SimpleNamespace(returncode=0,stdout=self.workbook(),stderr=b'')) as subprocess_mock:
+            info,content=rclone_file()
+            self.assertEqual(info['name'],'Copia.xlsx')
+            self.assertEqual(len(extract_rows(content)),1)
+            args=subprocess_mock.call_args.args[0]
+            self.assertEqual(args[-1], 'onedrive:Trabajo/Copia.xlsx')
+            self.assertEqual(source_reference(),('drive-prueba','path:Trabajo/Copia.xlsx'))
+
+    def test_movimiento_de_fila_detiene_sincronizacion(self):
+        rows=[('ALMACENAMIENTO DE ALICUOTAS',4,{'study':'ESTUDIO','subject':'FICTICIO-1','barcode':'ID-1'})]
+        previous=row_fingerprints(rows)
+        state={'fields':{'rowFingerprints':{'stringValue':__import__('json').dumps(previous)}}}
+        self.assertIsNone(validate_no_moved_rows(state, previous))
+        modified=row_fingerprints([('ALMACENAMIENTO DE ALICUOTAS',5,rows[0][2])])
+        with self.assertRaises(RuntimeError):
+            validate_no_moved_rows(state, modified)
 
     def test_no_blank(self):
         self.assertIsNone(row_data('SALIDA DE MUESTRA', ['']*13))

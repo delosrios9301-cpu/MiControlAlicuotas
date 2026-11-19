@@ -9,6 +9,8 @@ import json
 import os
 import re
 import sys
+import subprocess
+from pathlib import PurePosixPath
 from urllib.parse import quote
 import openpyxl
 import requests
@@ -107,6 +109,48 @@ def graph_file():
         raise ValueError('Excel demasiado grande para el capturador gratuito (15 MB).')
     return info, content
 
+def validated_rclone_path():
+    path = os.environ.get('ONEDRIVE_RELATIVE_PATH', '').strip()
+    if (not path or len(path) > 600 or not path.lower().endswith('.xlsx')
+            or path.startswith(('/', chr(92))) or chr(92) in path or ':' in path
+            or any(part in ('', '.', '..') for part in path.split('/'))):
+        raise ValueError('Ruta de OneDrive no válida; selecciona un Excel .xlsx de tu copia personal.')
+    return path
+
+def rclone_file():
+    # Rclone proporciona OAuth oficial por su aplicación compartida (sin registro propio Azure).
+    # Solo el archivo seleccionado se descarga en memoria, sin registrarlo ni guardarlo en GitHub.
+    relative_path = validated_rclone_path()
+    if not os.environ.get('RCLONE_CONFIG_ONEDRIVE_TOKEN'):
+        raise RuntimeError('Pendiente: autorizar OneDrive personal y guardar su token como secreto.')
+    args = ['rclone', '--config', 'NUL' if os.name == 'nt' else '/dev/null',
+            'cat', 'onedrive:' + relative_path]
+    try:
+        completed = subprocess.run(args, capture_output=True, timeout=150, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeError('OneDrive no respondió; no se transmitió ninguna fila.')
+    if completed.returncode != 0:
+        raise RuntimeError('No se pudo leer el Excel privado de OneDrive; verifica autorización y ruta.')
+    content = completed.stdout
+    if not content or len(content) > 15_000_000:
+        raise ValueError('El Excel está vacío o supera los 15 MB permitidos para esta prueba.')
+    return {'name': PurePosixPath(relative_path).name,
+            'eTag': hashlib.sha256(content).hexdigest()}, content
+
+def onedrive_file():
+    mode = os.environ.get('ONEDRIVE_ACCESS_METHOD', 'graph').strip().lower()
+    if mode == 'rclone':
+        return rclone_file()
+    if mode == 'graph':
+        return graph_file()
+    raise ValueError('Método de autorización de OneDrive no admitido.')
+
+def source_reference():
+    drive_id = os.environ['ONEDRIVE_DRIVE_ID']
+    if os.environ.get('ONEDRIVE_ACCESS_METHOD', 'graph').strip().lower() == 'rclone':
+        return drive_id, 'path:' + validated_rclone_path()
+    return drive_id, os.environ['ONEDRIVE_ITEM_ID']
+
 def firestore_base():
     project = os.environ['FIREBASE_PROJECT_ID']
     uid = os.environ['FIREBASE_OWNER_UID']
@@ -136,6 +180,32 @@ def doc_url(base, rid):
 def state_url(base, drive_id, item_id):
     code = hashlib.sha256(canon([drive_id, item_id]).encode()).hexdigest()
     return base + '/syncState/onedrive-' + code
+
+def row_fingerprints(rows):
+    """Huellas sin datos personales para detectar filas reordenadas o insertadas."""
+    fields = ('study', 'sampleType', 'subject', 'visit', 'barcode', 'aliquotType', 'pivot')
+    index = {}
+    for sheet, number, data in rows:
+        key = hashlib.sha256(canon([sheet] + [str(data.get(field, '')).strip().upper()
+                                            for field in fields]).encode('utf-8')).hexdigest()
+        index.setdefault(key, []).append(f'{sheet}:{number}')
+    return {key: sorted(locations) for key, locations in sorted(index.items())}
+
+def validate_no_moved_rows(state_doc, current_index):
+    raw = (state_doc or {}).get('fields', {}).get('rowFingerprints', {}).get('stringValue')
+    if not raw:
+        return
+    try:
+        old_index = json.loads(raw)
+    except (TypeError, ValueError):
+        raise RuntimeError('Estado anterior de filas inválido; importación detenida.')
+    if not isinstance(old_index, dict):
+        raise RuntimeError('Estado anterior de filas inválido; importación detenida.')
+    for fingerprint, previous_locations in old_index.items():
+        now = current_index.get(fingerprint)
+        if now is not None and previous_locations != now:
+            raise RuntimeError('Excel con filas insertadas o reordenadas. '
+                               'Sincronización detenida para evitar duplicados.')
 
 def previous_data(doc):
     if not doc:
@@ -176,28 +246,33 @@ def put_mirror(base, rid, value, update_time=None):
     project_root = base.split('/documents/')[0]
     firestore('POST', project_root + '/documents:commit', payload)
 
-def write_state(url, etag):
+def write_state(url, etag, index):
+    fingerprints = canon(index)
+    if len(fingerprints.encode('utf-8')) > 700000:
+        raise RuntimeError('Demasiadas filas para guardar la huella segura del Excel.')
     firestore('PATCH', url, {'fields': {
         'etag': {'stringValue': etag},
+        'rowFingerprints': {'stringValue': fingerprints},
         'checkedAt': {'timestampValue': dt.datetime.now(dt.timezone.utc).isoformat()},
     }})
 
 def sync(dry_run=True):
-    info, content = graph_file()
+    info, content = onedrive_file()
     rows = extract_rows(content)
     print('Excel reconocido: hojas compatibles, filas no vacías:', len(rows))
     if dry_run:
         print('Modo prueba: no se publicó ningún dato ni se modificó el Excel.')
         return len(rows), 0
     base = firestore_base()
-    drive_id = os.environ['ONEDRIVE_DRIVE_ID']
-    item_id = os.environ['ONEDRIVE_ITEM_ID']
+    drive_id, item_id = source_reference()
     state = state_url(base, drive_id, item_id)
     old = firestore('GET', state, missing_ok=True)
     etag = info.get('eTag') or hashlib.sha256(content).hexdigest()
     if old and old.get('fields', {}).get('etag', {}).get('stringValue') == etag:
         print('Sin cambios en el Excel; no se escribieron documentos.')
         return len(rows), 0
+    index = row_fingerprints(rows)
+    validate_no_moved_rows(old, index)
     changed = 0
     for sheet, number, data in rows:
         rid = source_id(drive_id, item_id, sheet, number)
@@ -210,7 +285,7 @@ def sync(dry_run=True):
             raise ValueError('Fila demasiado grande; no se actualizó el estado de sincronización.')
         put_mirror(base, rid, entry, timestamp)
         changed += 1
-    write_state(state, etag)
+    write_state(state, etag, index)
     print('Espejos actualizados:', changed, '(sin confirmar congelaciones)')
     return len(rows), changed
 

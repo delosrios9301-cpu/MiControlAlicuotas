@@ -4,6 +4,17 @@ Este componente se ejecuta en GitHub Actions y lee **un único Excel XLSX desde 
 
 La información **no se imprime en logs, no se guarda en GitHub y no se incluye en GitHub Pages**. Solo se escribe, con autorización, en documentos privados `owners/{uid}/entries/{sha256('mirrors\n'+id)}` de Firestore, con tipo `mirrors`, que la PWA ya presenta en «Sincronización → Cambios de Excel recibidos». Nunca marca congelaciones ni inventario como confirmados. No modifica el Excel.
 
+## Alternativa sin Azure ni Cevaxin: rclone gratuito
+
+Para OneDrive **personal** puede utilizarse el software libre [rclone](https://rclone.org/onedrive/), que trae su propia aplicación OAuth compartida. No es necesario crear una aplicación nueva de Microsoft Entra ni usar una cuenta de Cevaxin. **Requiere un inicio de sesión interactivo con Microsoft una sola vez** y conceder los permisos de OneDrive a rclone. No mantiene ninguna computadora encendida ni ejecuta el capturador Windows después de la vinculación.
+
+- Durante el consentimiento de rclone se debe configurar `access_scopes` con `Files.Read Files.Read.All offline_access`. Los permisos **por defecto de rclone incluyen escritura**, así que no aceptar la configuración por defecto si se desea acceso de solo lectura. Una cuenta Outlook personal autorizada puede conceder acceso a más archivos del OneDrive; este proceso solo invoca `rclone cat` sobre el XLSX indicado, pero Microsoft no restringe necesariamente el token a ese archivo.
+- No poner tokens ni JSON de rclone en GitHub público, capturas, conversaciones o códigos fuente. Guardar el JSON de token exclusivamente como secreto **ONEDRIVE_RCLONE_TOKEN** de GitHub Actions.
+- Variables necesarias en GitHub: `ONEDRIVE_ACCESS_METHOD=rclone`, `ONEDRIVE_DRIVE_ID` (ID de la cuenta de OneDrive), `ONEDRIVE_RELATIVE_PATH` (ruta relativa a la copia XLSX dentro del OneDrive).
+- El flujo prepara el entorno con `RCLONE_CONFIG_ONEDRIVE_TYPE=onedrive`, `RCLONE_CONFIG_ONEDRIVE_DRIVE_TYPE=personal`, `RCLONE_CONFIG_ONEDRIVE_DRIVE_ID`, y configura `RCLONE_ONEDRIVE_ACCESS_SCOPES` para lectura. El token ya autorizado debe proceder de una sesión que haya solicitado esos permisos de lectura.
+- Las credenciales de Firebase/Google Cloud siguen siendo necesarias mediante federación de identidad, y hay que comprobar que esté disponible sin habilitar facturación. Un token renovado por Microsoft dentro de un ejecutor efímero puede requerir renovación del secreto de GitHub en el futuro.
+- **Desactivado por defecto:** `MCA_ONEDRIVE_SYNC_ENABLED` no debe activarse hasta completar una prueba ficticia y verificar que las hojas y columnas corresponden con el Excel autorizado. Nunca activar un enlace de acceso público a información clínica.
+
 ## Cuenta confirmada: OneDrive personal (Outlook)
 
 Para registrar la integración se necesita una aplicación en Microsoft Entra que admita **cuentas personales de Microsoft** (o cuentas de organizaciones y personales). Este acceso no se obtiene por estar conectado a Firebase ni por compartir el Excel. La cuenta Outlook debe conceder autorización mediante Microsoft OAuth 2.0, sin introducir su contraseña en la aplicación ni en GitHub.
