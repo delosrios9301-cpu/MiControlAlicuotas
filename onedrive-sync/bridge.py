@@ -238,6 +238,13 @@ def missing_row_positions(state_doc, rows):
     # Una hoja totalmente vacía puede ser un fallo de exportación: detener.
     if previous_locations and not current_locations:
         raise RuntimeError('El Excel apareció completamente vacío; no se actualizó ningún registro.')
+    # Si falta una pestaña entera, no marcar sus filas: podría ser un error
+    # de lectura, un guardado incompleto o un cambio en el esquema del libro.
+    previous_sheets = {loc.rpartition(':')[0] for loc in previous_locations}
+    current_sheets = {sheet for sheet, _, _ in rows}
+    if previous_sheets - current_sheets:
+        raise RuntimeError('Una hoja antes utilizada no aparece con filas; '
+                           'se detuvo la actualización para proteger los registros.')
     missing = previous_locations - current_locations
     return sorted(
         ((loc.rpartition(':')[0], int(loc.rpartition(':')[2])) for loc in missing),
