@@ -112,7 +112,7 @@ def graph_file():
 def validated_rclone_path():
     path = os.environ.get('ONEDRIVE_RELATIVE_PATH', '').strip()
     if (not path or len(path) > 600 or not path.lower().endswith('.xlsx')
-            or path.startswith(('/', '\\\\')) or '\\\\' in path or ':' in path
+            or path.startswith(('/', chr(92))) or chr(92) in path or ':' in path
             or any(part in ('', '.', '..') for part in path.split('/'))):
         raise ValueError('Ruta de OneDrive no válida; selecciona un Excel .xlsx de tu copia personal.')
     return path
