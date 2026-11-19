@@ -36,6 +36,7 @@ jobs:
       - name: Verificar correccion y sintaxis sin conectar a Firebase
         run: |
           python3 .github/scripts/patch_web_cloud.py
+          python3 .github/scripts/patch_onedrive_history_ui.py
           node --check site/cloud.js
           node --check site/app.js
           python3 - <<'PY'
@@ -47,5 +48,7 @@ jobs:
           assert "request('https://firestore.googleapis.com/v1/'+name)" in cloud
           assert 'S.mirrors' in app
           assert 'Pendiente de autorización Microsoft' in app
+          assert 'Historial detectado (' in app
+          assert 'function excelFieldLabel(name)' in app
           print('Pruebas de integración estática correctas.')
           PY
