@@ -41,5 +41,39 @@ jobs:
               assert text in script, "Falta protección: "+text
           assert "vincular-onedrive.ps1" in wrapper
           assert 'ONEDRIVE_RCLONE_TOKEN' not in script
+          assert "if(-not (Test-Path -LiteralPath $cfg -PathType Leaf))" in script
+          assert "[System.IO.File]::WriteAllText($cfg, '')" in script
+          assert script.index("WriteAllText($cfg, '')") < script.index('listremotes')
+          assert "--log-level ERROR listremotes" in script
+          assert "--log-level ERROR config dump" in script
           print("Verificación de permisos y ausencia de secretos: correcta.")
           PY
+
+  test-windows-first-run:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar en Windows PowerShell 5.1 y no sobrescribir configuración
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $file = Join-Path $env:RUNNER_TEMP 'mca-test-rclone.conf'
+          try {
+            if(Test-Path -LiteralPath $file){ Remove-Item -LiteralPath $file -Force }
+            if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
+              [System.IO.File]::WriteAllText($file, '')
+            }
+            if(-not (Test-Path -LiteralPath $file -PathType Leaf)){ throw 'No se creó la configuración nueva' }
+            [System.IO.File]::WriteAllText($file, 'CREDENCIAL_FICTICIA_PARA_PRUEBAS')
+            if(-not (Test-Path -LiteralPath $file -PathType Leaf)){
+              [System.IO.File]::WriteAllText($file, '')
+            }
+            $content = [System.IO.File]::ReadAllText($file)
+            if($content -ne 'CREDENCIAL_FICTICIA_PARA_PRUEBAS'){
+              throw 'Se sobrescribió una configuración preexistente'
+            }
+            Write-Host 'Primera ejecución y conservación de datos: correctas.'
+          } finally {
+            if(Test-Path -LiteralPath $file){ Remove-Item -LiteralPath $file -Force }
+          }
