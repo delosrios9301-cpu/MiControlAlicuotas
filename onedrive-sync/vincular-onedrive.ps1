@@ -48,7 +48,17 @@ try {
       if(-not $rclone){ throw "rclone se instalo pero Windows aun no lo encuentra. Cierra y abre este asistente otra vez." }
     }
     Write-Host "rclone listo." -ForegroundColor Green
-    $existing=@(& $rclone --config $cfg listremotes 2>$null)
+    # El primer inicio no tiene archivo rclone.conf. En Windows PowerShell 5.1
+    # el aviso NOTICE de rclone por stderr puede convertirse en excepción
+    # cuando ErrorActionPreference='Stop', aunque el comando haya funcionado.
+    # Crear archivo vacío únicamente si aún no existe (sin borrar credenciales).
+    if(-not (Test-Path -LiteralPath $cfg -PathType Leaf)){
+      [System.IO.File]::WriteAllText($cfg, '')
+    }
+    $existing=@(& $rclone --config $cfg --log-level ERROR listremotes 2>$null)
+    if($LASTEXITCODE -ne 0){
+      throw "No se pudo consultar la configuracion local de OneDrive."
+    }
     if($existing -contains 'mca-outlook:'){
       Write-Host "Ya existe una conexion local. No se modificara." -ForegroundColor Yellow
     } else {
@@ -58,7 +68,7 @@ try {
       if($LASTEXITCODE -ne 0){ throw "No se completo la autorizacion de Microsoft." }
     }
     # Leer el JSON en memoria; nunca imprimir tokens o configuraciones.
-    $raw=(& $rclone --config $cfg config dump 2>$null) -join [Environment]::NewLine
+    $raw=(& $rclone --config $cfg --log-level ERROR config dump 2>$null) -join [Environment]::NewLine
     if($LASTEXITCODE -ne 0 -or -not $raw){ throw "La configuracion de OneDrive no se guardo." }
     $doc=$raw | ConvertFrom-Json
     $entry=$doc.'mca-outlook'
