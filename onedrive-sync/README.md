@@ -35,6 +35,14 @@ El registro de aplicaciones requiere acceso a Microsoft Entra (puede necesitar u
 4. Obtener el UID correcto del propietario de la app en Firebase Authentication y configurarlo como `FIREBASE_OWNER_UID` (Variable). Verificar que la regla de lectura de Firestore sigue privada.
 5. Probar una **copia del Excel con filas ficticias** en modo de revisión y confirmar que las filas aparecen como espejos pendientes en celular y no como inventario. Solo entonces, y con autorización expresa para alojar los datos reales en Firebase, establecer `MCA_ONEDRIVE_AUTHORIZED=true` y `MCA_ONEDRIVE_SYNC_ENABLED=true` en GitHub Variables.
 
+## Historial por registro de cambios guardados
+
+Cada vez que cambia una fila de la copia del Excel, el sistema conserva en su espejo privado de Firebase un **historial de hasta 50 revisiones**, con fecha/hora de lectura y los **nombres de los campos modificados**. No copia dentro del historial valores clínicos anteriores, códigos o identificadores. La vista del teléfono deberá mostrar ese historial; hasta entonces queda como metadato del espejo.
+
+- El historial **no equivale a una auditoría de cada pulsación o guardado de celda**: el flujo revisa OneDrive aproximadamente cada 15 minutos y puede omitir modificaciones intermedias que fueron sobrescritas antes de una revisión.
+- Si se cambia un registro que ya había sido revisado en la app, el conector vuelve a dejarlo **pendiente de revisión**.
+- Los registros existentes en el Excel no se modifican y los espejos no marcan alícuotas como procesadas, almacenadas o congeladas.
+
 ## Límites y cautelas
 
 - GitHub Actions programado funciona con demora variable; se solicita cada **15 minutos**, no en tiempo real. GitHub puede retrasar/saltar ejecuciones y desactiva workflows programados en repositorios públicos inactivos tras 60 días. Por tanto, **no es apropiado para tareas clínicas urgentes**.
