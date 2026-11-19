@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - '.github/scripts/patch_web_cloud.py'
+      - '.github/scripts/patch_onedrive_history_ui.py'
       - '.github/workflows/pages.yml'
       - '.github/workflows/test-web-patch.yml'
 permissions:
@@ -50,5 +51,7 @@ jobs:
           assert 'Pendiente de autorización Microsoft' in app
           assert 'Historial detectado (' in app
           assert 'function excelFieldLabel(name)' in app
+          assert 'Fila no encontrada en la última revisión; datos anteriores conservados' in app
+          assert "_cleared:'Fila ausente'" in app
           print('Pruebas de integración estática correctas.')
           PY
