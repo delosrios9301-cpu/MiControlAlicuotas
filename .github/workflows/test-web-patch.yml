@@ -30,6 +30,9 @@ jobs:
           sed -n '110,143p' site/cloud.js
           sed -n '55,67p' site/app.js | cut -c 1-650
           sed -n '1,8p' site/db.js
+      - name: Verificar version de cache PWA
+        run: |
+          sed -n '1,24p' site/sw.js
       - name: Verificar correccion y sintaxis sin conectar a Firebase
         run: |
           python3 .github/scripts/patch_web_cloud.py

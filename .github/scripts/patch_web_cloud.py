@@ -19,4 +19,12 @@ for item in PATCHES:
     changes[item["path"]] = source.replace(item["old"], item["next"], 1)
 for name, updated in changes.items():
     (root / name).write_text(updated, encoding="utf-8")
+# Forzar nuevo identificador de caché para que Android/PC reciban los archivos corregidos.
+sw_path = root / "sw.js"
+sw_lines = sw_path.read_text(encoding="utf-8").splitlines(keepends=True)
+matches = [i for i, line in enumerate(sw_lines) if line.strip().startswith("const CACHE") and "=" in line]
+if len(matches) != 1:
+    raise RuntimeError(f"Se esperaba una única constante CACHE en sw.js, encontradas {len(matches)}")
+sw_lines[matches[0]] = "const CACHE='mis-alicuotas-shell-github-20261118-cloudfix';\n"
+sw_path.write_text("".join(sw_lines), encoding="utf-8")
 print("Correcciones web listas: Firestore y recepcion remota OneDrive pendientes de activar.")
