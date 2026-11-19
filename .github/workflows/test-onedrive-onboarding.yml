@@ -1,0 +1,45 @@
+name: Validar asistente OneDrive Windows
+on:
+  pull_request:
+    paths:
+      - 'onedrive-sync/CONECTAR-ONEDRIVE-WINDOWS.cmd'
+      - 'onedrive-sync/vincular-onedrive.ps1'
+      - '.github/workflows/test-onedrive-onboarding.yml'
+  push:
+    branches:
+      - feature/onedrive-onboarding-windows
+permissions:
+  contents: read
+jobs:
+  validate-windows-assistant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar sintaxis PowerShell sin ejecutar autenticaciones
+        shell: pwsh
+        run: |
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile("onedrive-sync/vincular-onedrive.ps1",[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }
+          Write-Host "Sintaxis PowerShell correcta."
+      - name: Verificar protecciones del asistente
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          script=Path("onedrive-sync/vincular-onedrive.ps1").read_text()
+          wrapper=Path("onedrive-sync/CONECTAR-ONEDRIVE-WINDOWS.cmd").read_text()
+          checks=[
+              'Files.Read Files.Read.All offline_access',
+              "drive_type -ne 'personal'",
+              'No se ha compartido ni transmitido el Excel.',
+              'Get-Command winget.exe',
+              'config create mca-outlook onedrive',
+          ]
+          for text in checks:
+              assert text in script, "Falta protección: "+text
+          assert "vincular-onedrive.ps1" in wrapper
+          assert 'ONEDRIVE_RCLONE_TOKEN' not in script
+          print("Verificación de permisos y ausencia de secretos: correcta.")
+          PY
