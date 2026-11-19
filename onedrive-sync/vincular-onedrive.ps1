@@ -54,7 +54,7 @@ try {
     } else {
       Write-Host "Se abrira Microsoft para iniciar sesion con tu Outlook personal."
       Write-Host "Si aparece Cevaxin, cancela y selecciona la cuenta Outlook."
-      & $rclone --config $cfg config create mca-outlook onedrive region global access_scopes "Files.Read Files.Read.All offline_access" config_is_local true
+      & $rclone --config $cfg config create mca-outlook onedrive region global access_scopes "Files.Read Files.Read.All offline_access" config_is_local true --no-output
       if($LASTEXITCODE -ne 0){ throw "No se completo la autorizacion de Microsoft." }
     }
     # Leer el JSON en memoria; nunca imprimir tokens o configuraciones.
