@@ -9,6 +9,8 @@ import json
 import os
 import re
 import sys
+import subprocess
+from pathlib import PurePosixPath
 from urllib.parse import quote
 import openpyxl
 import requests
@@ -107,6 +109,48 @@ def graph_file():
         raise ValueError('Excel demasiado grande para el capturador gratuito (15 MB).')
     return info, content
 
+def validated_rclone_path():
+    path = os.environ.get('ONEDRIVE_RELATIVE_PATH', '').strip()
+    if (not path or len(path) > 600 or not path.lower().endswith('.xlsx')
+            or path.startswith(('/', '\\\\')) or '\\\\' in path or ':' in path
+            or any(part in ('', '.', '..') for part in path.split('/'))):
+        raise ValueError('Ruta de OneDrive no válida; selecciona un Excel .xlsx de tu copia personal.')
+    return path
+
+def rclone_file():
+    # Rclone proporciona OAuth oficial por su aplicación compartida (sin registro propio Azure).
+    # Solo el archivo seleccionado se descarga en memoria, sin registrarlo ni guardarlo en GitHub.
+    relative_path = validated_rclone_path()
+    if not os.environ.get('RCLONE_CONFIG_ONEDRIVE_TOKEN'):
+        raise RuntimeError('Pendiente: autorizar OneDrive personal y guardar su token como secreto.')
+    args = ['rclone', '--config', 'NUL' if os.name == 'nt' else '/dev/null',
+            'cat', 'onedrive:' + relative_path]
+    try:
+        completed = subprocess.run(args, capture_output=True, timeout=150, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeError('OneDrive no respondió; no se transmitió ninguna fila.')
+    if completed.returncode != 0:
+        raise RuntimeError('No se pudo leer el Excel privado de OneDrive; verifica autorización y ruta.')
+    content = completed.stdout
+    if not content or len(content) > 15_000_000:
+        raise ValueError('El Excel está vacío o supera los 15 MB permitidos para esta prueba.')
+    return {'name': PurePosixPath(relative_path).name,
+            'eTag': hashlib.sha256(content).hexdigest()}, content
+
+def onedrive_file():
+    mode = os.environ.get('ONEDRIVE_ACCESS_METHOD', 'graph').strip().lower()
+    if mode == 'rclone':
+        return rclone_file()
+    if mode == 'graph':
+        return graph_file()
+    raise ValueError('Método de autorización de OneDrive no admitido.')
+
+def source_reference():
+    drive_id = os.environ['ONEDRIVE_DRIVE_ID']
+    if os.environ.get('ONEDRIVE_ACCESS_METHOD', 'graph').strip().lower() == 'rclone':
+        return drive_id, 'path:' + validated_rclone_path()
+    return drive_id, os.environ['ONEDRIVE_ITEM_ID']
+
 def firestore_base():
     project = os.environ['FIREBASE_PROJECT_ID']
     uid = os.environ['FIREBASE_OWNER_UID']
@@ -183,15 +227,14 @@ def write_state(url, etag):
     }})
 
 def sync(dry_run=True):
-    info, content = graph_file()
+    info, content = onedrive_file()
     rows = extract_rows(content)
     print('Excel reconocido: hojas compatibles, filas no vacías:', len(rows))
     if dry_run:
         print('Modo prueba: no se publicó ningún dato ni se modificó el Excel.')
         return len(rows), 0
     base = firestore_base()
-    drive_id = os.environ['ONEDRIVE_DRIVE_ID']
-    item_id = os.environ['ONEDRIVE_ITEM_ID']
+    drive_id, item_id = source_reference()
     state = state_url(base, drive_id, item_id)
     old = firestore('GET', state, missing_ok=True)
     etag = info.get('eTag') or hashlib.sha256(content).hexdigest()
