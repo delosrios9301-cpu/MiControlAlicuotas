@@ -1,0 +1,24 @@
+name: Probar conector OneDrive (datos ficticios)
+on:
+  push:
+    branches: [feature/onedrive-cloud-sync]
+  pull_request:
+    paths:
+      - 'onedrive-sync/**'
+      - '.github/workflows/test-onedrive-sync.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependencias
+        run: python -m pip install --disable-pip-version-check -r onedrive-sync/requirements.txt
+      - name: Probar Excel ficticio sin accesos ni secretos
+        run: python -m unittest discover -s onedrive-sync -p 'test_*.py' -v

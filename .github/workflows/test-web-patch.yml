@@ -1,0 +1,48 @@
+name: Verificar interfaz y sincronizacion Firebase
+on:
+  push:
+    branches: [feature/onedrive-cloud-sync]
+  pull_request:
+    paths:
+      - '.github/scripts/patch_web_cloud.py'
+      - '.github/workflows/pages.yml'
+      - '.github/workflows/test-web-patch.yml'
+permissions:
+  contents: read
+jobs:
+  web-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar web de prueba
+        run: |
+          mkdir -p site
+          base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
+          test -f site/cloud.js
+          test -f site/app.js
+      - name: Diagnostico de API publica de sincronizacion (sin credenciales)
+        run: |
+          sed -n '1,18p' site/cloud.js
+          grep -nE 'docName|fetchOne|readableTables|const tables=|function unpack|applyCloudRow|sourceOrigin|mirrors' site/cloud.js | head -40 || true
+          grep -nE 'rows=S.captures|renderCloudPanel|Sincronización y recuperación' site/app.js | cut -c 1-450 | head -12 || true
+          sed -n '67,78p' site/cloud.js
+          sed -n '110,143p' site/cloud.js
+          sed -n '55,67p' site/app.js | cut -c 1-650
+          sed -n '1,8p' site/db.js
+      - name: Verificar correccion y sintaxis sin conectar a Firebase
+        run: |
+          python3 .github/scripts/patch_web_cloud.py
+          node --check site/cloud.js
+          node --check site/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          cloud = Path('site/cloud.js').read_text()
+          app = Path('site/app.js').read_text()
+          assert "const tables=new Set(['records','shifts','freezers','audit','mirrors']);" in cloud
+          assert 'return `projects/${safe(config.projectId)}/databases/(default)/documents/owners/' in cloud
+          assert "request('https://firestore.googleapis.com/v1/'+name)" in cloud
+          assert 'S.mirrors' in app
+          assert 'Pendiente de autorización Microsoft' in app
+          print('Pruebas de integración estática correctas.')
+          PY

@@ -1,0 +1,45 @@
+name: Sincronización OneDrive opcional (sin Windows)
+on:
+  schedule:
+    # Revisión periódica; GitHub Actions puede retrasar o saltar ejecuciones.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: mca-onedrive-sync
+  cancel-in-progress: false
+jobs:
+  synchronize:
+    # DESACTIVADO por defecto hasta configurar credenciales, autorización y prueba.
+    if: vars.MCA_ONEDRIVE_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias del capturador remoto
+        run: python -m pip install --disable-pip-version-check -r onedrive-sync/requirements.txt
+      - name: Autenticar en Google Cloud sin claves privadas
+        id: google_auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/datastore
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SYNC_SERVICE_ACCOUNT }}
+      - name: Leer solo el archivo XLSX y sincronizar filas revisables
+        env:
+          ONEDRIVE_CLIENT_ID: ${{ vars.ONEDRIVE_CLIENT_ID }}
+          ONEDRIVE_CLIENT_SECRET: ${{ secrets.ONEDRIVE_CLIENT_SECRET }}
+          ONEDRIVE_REFRESH_TOKEN: ${{ secrets.ONEDRIVE_REFRESH_TOKEN }}
+          ONEDRIVE_DRIVE_ID: ${{ vars.ONEDRIVE_DRIVE_ID }}
+          ONEDRIVE_ITEM_ID: ${{ vars.ONEDRIVE_ITEM_ID }}
+          FIREBASE_PROJECT_ID: mi-control-de-alicuotas-cde8d
+          FIREBASE_OWNER_UID: ${{ vars.FIREBASE_OWNER_UID }}
+          GCP_ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          MCA_ONEDRIVE_AUTHORIZED: ${{ vars.MCA_ONEDRIVE_AUTHORIZED }}
+        run: python onedrive-sync/bridge.py --sync
