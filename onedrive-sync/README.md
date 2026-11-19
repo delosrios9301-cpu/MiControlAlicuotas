@@ -43,6 +43,12 @@ Cada vez que cambia una fila de la copia del Excel, el sistema conserva en su es
 - Si se cambia un registro que ya había sido revisado en la app, el conector vuelve a dejarlo **pendiente de revisión**.
 - Los registros existentes en el Excel no se modifican y los espejos no marcan alícuotas como procesadas, almacenadas o congeladas.
 
+## Filas que dejan de aparecer
+
+Cuando el sincronizador detecta que una fila antes registrada **ya no aparece en el Excel**, conserva los datos anteriores en el espejo privado de Firebase y la identifica como **«Fila no encontrada en la última revisión»**, con una nueva entrada en el historial. Esto **no elimina ningún registro** ni confirma que se haya borrado: también puede deberse a una fila vaciada.
+
+El sistema detiene la sincronización en situaciones dudosas: si desaparece una hoja completa, si el libro parece vacío o si detecta que se desplazaron filas. Una fila que vuelve a aparecer recupera el mismo identificador y deja de mostrarse como ausente.
+
 ## Límites y cautelas
 
 - GitHub Actions programado funciona con demora variable; se solicita cada **15 minutos**, no en tiempo real. GitHub puede retrasar/saltar ejecuciones y desactiva workflows programados en repositorios públicos inactivos tras 60 días. Por tanto, **no es apropiado para tareas clínicas urgentes**.
