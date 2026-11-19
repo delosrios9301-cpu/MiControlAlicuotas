@@ -33,22 +33,10 @@ jobs:
       - name: Verificar version de cache PWA
         run: |
           sed -n '1,24p' site/sw.js
-      - name: Inspeccionar vista estática de capturas OneDrive
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('site/app.js').read_text(encoding='utf-8')
-          marker='Cambios de Excel recibidos desde Firebase'
-          pos=text.find(marker)
-          if pos == -1:
-            raise SystemExit('No se encontró la sección de espejos')
-          print('SECCION_ESPEJOS_INICIO')
-          print(text[pos:pos+3300])
-          print('SECCION_ESPEJOS_FIN')
-          PY
       - name: Verificar correccion y sintaxis sin conectar a Firebase
         run: |
           python3 .github/scripts/patch_web_cloud.py
+          python3 .github/scripts/patch_onedrive_history_ui.py
           node --check site/cloud.js
           node --check site/app.js
           python3 - <<'PY'
@@ -60,5 +48,7 @@ jobs:
           assert "request('https://firestore.googleapis.com/v1/'+name)" in cloud
           assert 'S.mirrors' in app
           assert 'Pendiente de autorización Microsoft' in app
+          assert 'Historial detectado (' in app
+          assert 'function excelFieldLabel(name)' in app
           print('Pruebas de integración estática correctas.')
           PY
