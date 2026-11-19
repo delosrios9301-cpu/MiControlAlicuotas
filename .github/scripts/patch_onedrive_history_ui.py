@@ -9,5 +9,13 @@ if source.count(change['old']) != 1 or source.count(change['marker']) != 1:
     raise RuntimeError('No coincide la plantilla de espejos; se detiene publicación sin modificarla.')
 source = source.replace(change['old'],change['new'],1)
 source = source.replace(change['marker'],change['helper']+'\n'+change['marker'],1)
+# Textos coherentes con OneDrive en nube, sin depender de una PC encendida.
+for before, after in [
+    ("Los cambios aparecen cuando se conecta la PC, se sincroniza Firebase y la aplicación del teléfono está abierta. No son alícuotas congeladas confirmadas.", "Las modificaciones guardadas en OneDrive podrán verse desde Android después de sincronizarse en Firebase, sin mantener la PC encendida. También se admiten capturas desde el equipo Windows. Ningún registro confirma por sí solo la congelación."),
+    ("No se han sincronizado filas de Excel. Primero inicia sesión en la misma cuenta Firebase en Windows y Android, y autoriza el envío desde la PC.", "Todavía no hay filas sincronizadas. La conexión privada de OneDrive debe estar autorizada y activada; también puedes recibir capturas desde Windows.")
+]:
+    if source.count(before) != 1:
+        raise RuntimeError('No coincide el texto esperado de Sincronización; se detiene publicación.')
+    source = source.replace(before, after, 1)
 path.write_text(source,encoding='utf-8')
 print('Historial de Excel visible en Sincronización, con detalle plegable por fila.')
