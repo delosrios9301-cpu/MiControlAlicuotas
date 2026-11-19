@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 from types import SimpleNamespace
 from openpyxl import Workbook
-from bridge import extract_rows, source_id, row_data, mirror_payload, validated_rclone_path, rclone_file, source_reference, row_fingerprints, validate_no_moved_rows
+from bridge import extract_rows, source_id, row_data, mirror_payload, validated_rclone_path, rclone_file, source_reference, row_fingerprints, validate_no_moved_rows, missing_row_positions, mirror_missing_payload
 
 class TestOneDriveBridge(unittest.TestCase):
     def workbook(self):
@@ -66,6 +66,57 @@ class TestOneDriveBridge(unittest.TestCase):
         modified=row_fingerprints([('ALMACENAMIENTO DE ALICUOTAS',5,rows[0][2])])
         with self.assertRaises(RuntimeError):
             validate_no_moved_rows(state, modified)
+
+    def test_fila_vaciada_se_marca_sin_borrar_los_datos_anteriores(self):
+        original = [
+            ('ALMACENAMIENTO DE ALICUOTAS', 4, {'subject': 'PACIENTE-FICTICIO-1', 'study': 'E1', 'qty': 1}),
+            ('ALMACENAMIENTO DE ALICUOTAS', 5, {'subject': 'PACIENTE-FICTICIO-2', 'study': 'E1', 'qty': 1}),
+        ]
+        old = {'fields': {'rowFingerprints': {'stringValue': __import__('json').dumps(row_fingerprints(original))}}}
+        current = [original[0]]
+        validate_no_moved_rows(old, row_fingerprints(current))
+        self.assertEqual(missing_row_positions(old, current), [('ALMACENAMIENTO DE ALICUOTAS', 5)])
+        previous = mirror_payload('id', 'ficticio.xlsx', 'ALMACENAMIENTO DE ALICUOTAS', 5, original[1][2])
+        absent = mirror_missing_payload('id', 'ficticio.xlsx', 'ALMACENAMIENTO DE ALICUOTAS', 5, previous)
+        self.assertTrue(absent['data']['_cleared'])
+        self.assertEqual(absent['data']['subject'], 'PACIENTE-FICTICIO-2')
+        self.assertEqual(absent['changedFields'], ['_cleared'])
+        self.assertEqual(len(absent['changeHistory']), 2)
+        self.assertIn('no aparece', absent['reviewNote'])
+
+    def test_vuelta_de_una_fila_reutiliza_el_mismo_identificador(self):
+        prior = mirror_payload('id', 'ficticio.xlsx', 'SALIDA DE MUESTRA', 4, {'subject': 'FICTICIO'})
+        absent = mirror_missing_payload('id', 'ficticio.xlsx', 'SALIDA DE MUESTRA', 4, prior)
+        restored = mirror_payload('id', 'ficticio.xlsx', 'SALIDA DE MUESTRA', 4, {'subject': 'FICTICIO'}, absent)
+        self.assertEqual(restored['id'], prior['id'])
+        self.assertFalse(restored['data'].get('_cleared', False))
+        self.assertEqual(len(restored['changeHistory']), 3)
+
+    def test_sin_historial_no_inventa_filas_vaciadas(self):
+        current = [('ALMACENAMIENTO DE ALICUOTAS', 4, {'study': 'TEST'})]
+        self.assertEqual(missing_row_positions(None, current), [])
+
+    def test_documento_completamente_vacio_se_rechaza(self):
+        original = [('ALMACENAMIENTO DE ALICUOTAS', 4, {'study':'TEST'})]
+        state = {'fields': {'rowFingerprints': {'stringValue': __import__('json').dumps(row_fingerprints(original))}}}
+        with self.assertRaises(RuntimeError):
+            missing_row_positions(state, [])
+
+    def test_hoja_sin_filas_detiene_antes_de_marcar_borrados(self):
+        original = [
+            ('ALMACENAMIENTO DE ALICUOTAS', 4, {'study': 'TEST', 'subject': 'A'}),
+            ('SALIDA DE MUESTRA', 4, {'study': 'TEST', 'subject': 'B'}),
+        ]
+        state = {'fields': {'rowFingerprints': {'stringValue': __import__('json').dumps(row_fingerprints(original))}}}
+        with self.assertRaises(RuntimeError):
+            missing_row_positions(state, [original[0]])
+
+    def test_si_el_registro_revisado_desaparece_requiere_revision(self):
+        prior = mirror_payload('id','ficticio.xlsx','ALMACENAMIENTO DE ALICUOTAS',4, {'study':'TEST'})
+        prior['reviewedAt'] = '2026-11-19T01:00:00+00:00'
+        absent = mirror_missing_payload('id','ficticio.xlsx','ALMACENAMIENTO DE ALICUOTAS',4,prior)
+        self.assertIsNone(absent['reviewedAt'])
+        self.assertEqual(absent['changedFields'],['_cleared'])
 
     def test_no_blank(self):
         self.assertIsNone(row_data('SALIDA DE MUESTRA', ['']*13))
