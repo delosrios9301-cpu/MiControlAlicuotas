@@ -39,10 +39,10 @@ jobs:
           from pathlib import Path
           cloud = Path('site/cloud.js').read_text()
           app = Path('site/app.js').read_text()
-          assert 'const readableTables=new Set([...tables,\'mirrors\']);' in cloud
+          assert "const tables=new Set(['records','shifts','freezers','audit','mirrors']);" in cloud
           assert 'return `projects/${safe(config.projectId)}/databases/(default)/documents/owners/' in cloud
           assert "request('https://firestore.googleapis.com/v1/'+name)" in cloud
-          assert "await put('captures',copy)" in cloud
+          assert 'S.mirrors' in app
           assert 'Pendiente de autorización Microsoft' in app
           print('Pruebas de integración estática correctas.')
           PY
