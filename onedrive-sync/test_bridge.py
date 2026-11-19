@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 from types import SimpleNamespace
 from openpyxl import Workbook
-from bridge import extract_rows, source_id, row_data, mirror_payload, validated_rclone_path, rclone_file, source_reference
+from bridge import extract_rows, source_id, row_data, mirror_payload, validated_rclone_path, rclone_file, source_reference, row_fingerprints, validate_no_moved_rows
 
 class TestOneDriveBridge(unittest.TestCase):
     def workbook(self):
@@ -57,6 +57,15 @@ class TestOneDriveBridge(unittest.TestCase):
             args=subprocess_mock.call_args.args[0]
             self.assertEqual(args[-1], 'onedrive:Trabajo/Copia.xlsx')
             self.assertEqual(source_reference(),('drive-prueba','path:Trabajo/Copia.xlsx'))
+
+    def test_movimiento_de_fila_detiene_sincronizacion(self):
+        rows=[('ALMACENAMIENTO DE ALICUOTAS',4,{'study':'ESTUDIO','subject':'FICTICIO-1','barcode':'ID-1'})]
+        previous=row_fingerprints(rows)
+        state={'fields':{'rowFingerprints':{'stringValue':__import__('json').dumps(previous)}}}
+        self.assertIsNone(validate_no_moved_rows(state, previous))
+        modified=row_fingerprints([('ALMACENAMIENTO DE ALICUOTAS',5,rows[0][2])])
+        with self.assertRaises(RuntimeError):
+            validate_no_moved_rows(state, modified)
 
     def test_no_blank(self):
         self.assertIsNone(row_data('SALIDA DE MUESTRA', ['']*13))
