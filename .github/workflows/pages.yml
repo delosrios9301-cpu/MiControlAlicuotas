@@ -39,6 +39,11 @@ jobs:
         env:
           FIREBASE_WEB_API_KEY: ${{ vars.FIREBASE_WEB_API_KEY }}
         run: python3 .github/scripts/inject_firebase_config.py
+      - name: Corregir cliente de Firestore y preparar lectura de capturas remotas
+        run: |
+          python3 .github/scripts/patch_web_cloud.py
+          node --check site/cloud.js
+          node --check site/app.js
       - name: Configurar Pages
         uses: actions/configure-pages@v5
       - name: Subir web estática
