@@ -207,6 +207,54 @@ def validate_no_moved_rows(state_doc, current_index):
             raise RuntimeError('Excel con filas insertadas o reordenadas. '
                                'Sincronización detenida para evitar duplicados.')
 
+def missing_row_positions(state_doc, rows):
+    """Filas anteriormente presentes que ya no aparecen en el XLSX.
+
+    Nunca interpretarlas como borrados definitivos: pueden haberse vaciado,
+    ocultado por un fallo de guardado o eliminado. Se conservan en el espejo.
+    """
+    raw = (state_doc or {}).get('fields', {}).get('rowFingerprints', {}).get('stringValue')
+    if not raw:
+        return []
+    try:
+        old_index = json.loads(raw)
+        if not isinstance(old_index, dict):
+            raise ValueError('Formato incorrecto')
+        previous_locations = {
+            location
+            for locations in old_index.values()
+            for location in locations
+        }
+        if not all(
+            isinstance(loc, str) and loc.rpartition(':')[0] in SHEETS
+            and loc.rpartition(':')[2].isdigit()
+            and int(loc.rpartition(':')[2]) >= 4
+            for loc in previous_locations
+        ):
+            raise ValueError('Identidad de fila inválida')
+    except (TypeError, ValueError):
+        raise RuntimeError('Historial anterior de ubicaciones inválido; sincronización detenida.')
+    current_locations = {f'{sheet}:{number}' for sheet, number, _ in rows}
+    # Una hoja totalmente vacía puede ser un fallo de exportación: detener.
+    if previous_locations and not current_locations:
+        raise RuntimeError('El Excel apareció completamente vacío; no se actualizó ningún registro.')
+    missing = previous_locations - current_locations
+    return sorted(
+        ((loc.rpartition(':')[0], int(loc.rpartition(':')[2])) for loc in missing),
+        key=lambda x: (x[0], x[1]),
+    )
+
+def mirror_missing_payload(rid, source_name, sheet, number, previous):
+    """No borrar datos anteriores. Señalar explícitamente una fila ausente."""
+    if not previous or not isinstance(previous.get('data'), dict):
+        raise RuntimeError('No existe una copia previa verificable de la fila ausente.')
+    data = dict(previous['data'])
+    data['_cleared'] = True
+    entry = mirror_payload(rid, source_name, sheet, number, data, previous)
+    entry['reviewNote'] = ('La fila no aparece en la última revisión del Excel. '
+                           'Comprueba si se vació o movió; los datos previos se conservaron.')
+    return entry
+
 def previous_data(doc):
     if not doc:
         return None, None
@@ -306,6 +354,7 @@ def sync(dry_run=True):
         return len(rows), 0
     index = row_fingerprints(rows)
     validate_no_moved_rows(old, index)
+    missing = missing_row_positions(old, rows)
     changed = 0
     for sheet, number, data in rows:
         rid = source_id(drive_id, item_id, sheet, number)
@@ -316,6 +365,17 @@ def sync(dry_run=True):
         entry = mirror_payload(rid, info['name'], sheet, number, data, previous)
         if len(canon(entry).encode()) > 890000:
             raise ValueError('Fila demasiado grande; no se actualizó el estado de sincronización.')
+        put_mirror(base, rid, entry, timestamp)
+        changed += 1
+    for sheet, number in missing:
+        rid = source_id(drive_id, item_id, sheet, number)
+        before = firestore('GET', doc_url(base, rid), missing_ok=True)
+        previous, timestamp = previous_data(before)
+        if previous and isinstance(previous.get('data'), dict) and previous['data'].get('_cleared'):
+            continue
+        entry = mirror_missing_payload(rid, info['name'], sheet, number, previous)
+        if len(canon(entry).encode()) > 890000:
+            raise ValueError('Registro demasiado grande; el historial no fue actualizado.')
         put_mirror(base, rid, entry, timestamp)
         changed += 1
     write_state(state, etag, index)
