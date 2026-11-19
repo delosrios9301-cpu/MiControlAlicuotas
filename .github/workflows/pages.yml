@@ -42,6 +42,7 @@ jobs:
       - name: Corregir cliente de Firestore y preparar lectura de capturas remotas
         run: |
           python3 .github/scripts/patch_web_cloud.py
+          python3 .github/scripts/patch_onedrive_history_ui.py
           node --check site/cloud.js
           node --check site/app.js
       - name: Configurar Pages
