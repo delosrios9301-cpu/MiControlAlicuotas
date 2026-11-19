@@ -20,14 +20,11 @@ for item in PATCHES:
 for name, updated in changes.items():
     (root / name).write_text(updated, encoding="utf-8")
 # Forzar nuevo identificador de caché para que Android/PC reciban los archivos corregidos.
-import re
 sw_path = root / "sw.js"
-sw_source = sw_path.read_text(encoding="utf-8")
-sw_pattern = r"\\bconst CACHE\\s*=\\s*(['\\\"])[^'\\\"]+\\1\\s*;"
-sw_updated, replaced = re.subn(
-    sw_pattern, "const CACHE='mis-alicuotas-shell-github-20261118-cloudfix';", sw_source
-)
-if replaced != 1:
-    raise RuntimeError(f"Se esperó 1 versión de caché en sw.js, encontradas {replaced}")
-sw_path.write_text(sw_updated, encoding="utf-8")
+sw_lines = sw_path.read_text(encoding="utf-8").splitlines(keepends=True)
+matches = [i for i, line in enumerate(sw_lines) if line.strip().startswith("const CACHE") and "=" in line]
+if len(matches) != 1:
+    raise RuntimeError(f"Se esperaba una única constante CACHE en sw.js, encontradas {len(matches)}")
+sw_lines[matches[0]] = "const CACHE='mis-alicuotas-shell-github-20261118-cloudfix';\n"
+sw_path.write_text("".join(sw_lines), encoding="utf-8")
 print("Correcciones web listas: Firestore y recepcion remota OneDrive pendientes de activar.")
