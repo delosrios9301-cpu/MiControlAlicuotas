@@ -1,0 +1,54 @@
+name: Verificar sitio publicado
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-deployment.yml'
+  workflow_run:
+    workflows: ['Publicar Mi Control de Alícuotas']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Comprobar versión de la app pública sin autenticación ni datos clínicos
+        env:
+          SITE_ROOT: https://delosrios9301-cpu.github.io/MiControlAlicuotas
+        run: |
+          python3 - <<'PY'
+          import os
+          import time
+          import urllib.request
+          import urllib.error
+
+          base=os.environ["SITE_ROOT"].rstrip("/")
+          files=["/index.html", "/sw.js", "/cloud.js", "/app.js"]
+          expected={
+              "/sw.js": "mis-alicuotas-shell-github-20261118-cloudfix",
+              "/cloud.js": "return `projects/${safe(config.projectId)}/databases/(default)/documents/owners/",
+              "/app.js": "Pendiente de autorización Microsoft",
+          }
+          for attempt in range(1, 13):
+              try:
+                  bodies={}
+                  for path in files:
+                      req=urllib.request.Request(base+path+"?verify="+str(attempt),headers={"Cache-Control":"no-cache","User-Agent":"MCA-Deploy-Check/1.0"})
+                      with urllib.request.urlopen(req,timeout=13) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"Archivo {path} estado {response.status}")
+                          bodies[path]=response.read(2500000).decode("utf-8","replace")
+                  missing=[path for path,token in expected.items() if token not in bodies[path]]
+                  if missing: raise ValueError("Versión anterior en: "+", ".join(missing))
+                  if "Mi Control" not in bodies["/index.html"]:
+                      raise ValueError("Página principal inesperada")
+                  print("Publicación disponible y versión corregida verificada: index.html, sw.js, cloud.js, app.js.")
+                  break
+              except (ValueError, RuntimeError, urllib.error.URLError, TimeoutError) as exc:
+                  if attempt==12: raise SystemExit("Sitio no verificado: "+str(exc))
+                  print("Versión pendiente de propagación; reintentando comprobación pública.")
+                  time.sleep(10)
+          PY
