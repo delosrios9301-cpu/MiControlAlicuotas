@@ -17,5 +17,14 @@ for before, after in [
     if source.count(before) != 1:
         raise RuntimeError('No coincide el texto esperado de Sincronización; se detiene publicación.')
     source = source.replace(before, after, 1)
+# Una ausencia observada no demuestra que la fila fue borrada del libro.
+old_status = 'Fila vaciada en Excel'
+if source.count(old_status) != 1:
+    raise RuntimeError('No existe el indicador de fila ausente para corregir.')
+source = source.replace(old_status, 'Fila no encontrada en la última revisión; datos anteriores conservados', 1)
+old_label = "guide:'Guía'})[name]"
+if source.count(old_label) != 1:
+    raise RuntimeError('No existe el diccionario de campos del historial.')
+source = source.replace(old_label, "guide:'Guía',_cleared:'Fila ausente'})[name]", 1)
 path.write_text(source,encoding='utf-8')
 print('Historial de Excel visible en Sincronización, con detalle plegable por fila.')
