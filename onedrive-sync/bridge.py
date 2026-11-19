@@ -181,6 +181,32 @@ def state_url(base, drive_id, item_id):
     code = hashlib.sha256(canon([drive_id, item_id]).encode()).hexdigest()
     return base + '/syncState/onedrive-' + code
 
+def row_fingerprints(rows):
+    """Huellas sin datos personales para detectar filas reordenadas o insertadas."""
+    fields = ('study', 'sampleType', 'subject', 'visit', 'barcode', 'aliquotType', 'pivot')
+    index = {}
+    for sheet, number, data in rows:
+        key = hashlib.sha256(canon([sheet] + [str(data.get(field, '')).strip().upper()
+                                            for field in fields]).encode('utf-8')).hexdigest()
+        index.setdefault(key, []).append(f'{sheet}:{number}')
+    return {key: sorted(locations) for key, locations in sorted(index.items())}
+
+def validate_no_moved_rows(state_doc, current_index):
+    raw = (state_doc or {}).get('fields', {}).get('rowFingerprints', {}).get('stringValue')
+    if not raw:
+        return
+    try:
+        old_index = json.loads(raw)
+    except (TypeError, ValueError):
+        raise RuntimeError('Estado anterior de filas inválido; importación detenida.')
+    if not isinstance(old_index, dict):
+        raise RuntimeError('Estado anterior de filas inválido; importación detenida.')
+    for fingerprint, previous_locations in old_index.items():
+        now = current_index.get(fingerprint)
+        if now is not None and previous_locations != now:
+            raise RuntimeError('Excel con filas insertadas o reordenadas. '
+                               'Sincronización detenida para evitar duplicados.')
+
 def previous_data(doc):
     if not doc:
         return None, None
@@ -220,9 +246,13 @@ def put_mirror(base, rid, value, update_time=None):
     project_root = base.split('/documents/')[0]
     firestore('POST', project_root + '/documents:commit', payload)
 
-def write_state(url, etag):
+def write_state(url, etag, index):
+    fingerprints = canon(index)
+    if len(fingerprints.encode('utf-8')) > 700000:
+        raise RuntimeError('Demasiadas filas para guardar la huella segura del Excel.')
     firestore('PATCH', url, {'fields': {
         'etag': {'stringValue': etag},
+        'rowFingerprints': {'stringValue': fingerprints},
         'checkedAt': {'timestampValue': dt.datetime.now(dt.timezone.utc).isoformat()},
     }})
 
@@ -241,6 +271,8 @@ def sync(dry_run=True):
     if old and old.get('fields', {}).get('etag', {}).get('stringValue') == etag:
         print('Sin cambios en el Excel; no se escribieron documentos.')
         return len(rows), 0
+    index = row_fingerprints(rows)
+    validate_no_moved_rows(old, index)
     changed = 0
     for sheet, number, data in rows:
         rid = source_id(drive_id, item_id, sheet, number)
@@ -253,7 +285,7 @@ def sync(dry_run=True):
             raise ValueError('Fila demasiado grande; no se actualizó el estado de sincronización.')
         put_mirror(base, rid, entry, timestamp)
         changed += 1
-    write_state(state, etag)
+    write_state(state, etag, index)
     print('Espejos actualizados:', changed, '(sin confirmar congelaciones)')
     return len(rows), changed
 
