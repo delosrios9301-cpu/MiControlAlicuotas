@@ -4,6 +4,10 @@ on:
     paths:
       - '.github/workflows/check-shift-readiness.yml'
       - '.github/scripts/shift_readiness.py'
+      - 'tests/e2e-import-xlsx.mjs'
+      - 'web-import/xlsx-reader.js'
+      - '.github/scripts/patch_xlsx_import.py'
+      - '.github/scripts/patch_xlsx_import_status.py'
 permissions:
   contents: read
 jobs:
