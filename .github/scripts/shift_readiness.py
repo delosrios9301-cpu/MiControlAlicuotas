@@ -13,6 +13,7 @@ checks={
   'dominios restringidos': "const hosts=new Set(['onedrive.live.com','1drv.ms'" in app,
   'no copia de xlsx': 'La app guardará la referencia' in app and 'no una copia del Excel' in app,
   'sync de vínculo': "'workbooks'" in cloud and "'workbooks'" in db,
+  'protección sin reglas': "job.table==='workbooks'&&!config.workbookSyncEnabled" in cloud,
   'migración no destructiva': 'DB_VERSION=4' in db and "db.createObjectStore(name,{keyPath})" in db,
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
