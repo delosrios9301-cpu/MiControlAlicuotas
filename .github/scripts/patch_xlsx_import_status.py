@@ -76,5 +76,21 @@ patch(
  }""",
  "mostrar error persistente"
 )
+patch(
+ "case'nav-sync':navigate('sincronizacion');return;",
+ "case'nav-sync':closeModal();navigate('sincronizacion');return;",
+ "abrir revisión desde resumen y cerrar cuadro"
+)
+patch(
+ "${button('close-modal','Revisar capturas','btn primary')}",
+ "${button('nav-sync','Revisar capturas','btn primary')}",
+ "el cuadro lleva a capturas"
+)
+sw=Path('site/sw.js')
+cache=sw.read_text(encoding='utf-8')
+old='mis-alicuotas-shell-github-20261120-selector-excel-visible'
+if cache.count(old)!=1:raise RuntimeError('Caché Android no coincide con versión esperada.')
+cache=cache.replace(old,'mis-alicuotas-shell-github-20261120-xlsx-result')
+sw.write_text(cache,encoding='utf-8')
 p.write_text(s,encoding='utf-8')
 print('Resultado XLSX visible y persistente; capturas y datos existentes conservados.')
