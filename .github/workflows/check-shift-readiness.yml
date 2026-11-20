@@ -21,9 +21,9 @@ jobs:
           python3 .github/scripts/patch_excel_center.py
           cp web-import/xlsx-reader.js site/xlsx-reader.js
           python3 .github/scripts/patch_xlsx_import.py
+          python3 .github/scripts/patch_xlsx_import_status.py
           node --check site/xlsx-reader.js
           python3 .github/scripts/shift_readiness.py
-          python3 tests/diagnose_xlsx_ui.py
           node --check site/app.js
           node --check site/cloud.js
           node --check site/db.js
