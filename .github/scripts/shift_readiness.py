@@ -21,6 +21,7 @@ checks={
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
   'selector Android visible': 'id="manualExcelInput"' in app and 'aria-label="Elegir archivo XLSX desde el teléfono"' in app and 'type="file"' in app and 'hidden><p class="small muted mt">Puedes volver' not in app,
+  'Firebase indica autenticación verdadera': 'Cuenta Firebase sin sesión' in app and 'Cuenta Firebase autenticada' in app,
   'recuento local Excel visible': 'Capturas XLSX guardadas en este dispositivo' in app,
   'resultado Excel persistente': 'excelImportResult' in app and "key:'xlsxImportReport'" in app,
   'errores de Excel persistentes': "kind:'error'" in app and "No se importaron filas." in app,
