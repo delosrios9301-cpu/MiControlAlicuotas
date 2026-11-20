@@ -14,6 +14,8 @@ checks={
   'no copia de xlsx': 'La app guardará la referencia' in app and 'no una copia del Excel' in app,
   'sync de vínculo': "'workbooks'" in cloud and "'workbooks'" in db,
   'protección sin reglas': "job.table==='workbooks'&&!config.workbookSyncEnabled" in cloud,
+  'no contar vínculo pendiente como alícuota pendiente': "S.cloudPending=rows[6].filter(job=>job.table!=='workbooks'||window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;" in app,
+  'preservar cola original para sincronizar después': "new Set(['records','shifts','freezers','audit','mirrors','workbooks'])" in db,
   'migración no destructiva': 'DB_VERSION=4' in db and "db.createObjectStore(name,{keyPath})" in db,
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
