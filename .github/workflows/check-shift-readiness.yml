@@ -26,3 +26,8 @@ jobs:
           node --check site/app.js
           node --check site/cloud.js
           node --check site/db.js
+      - name: Leer un XLSX ficticio con el parser de navegador (sin Excel clínico)
+        run: |
+          python3 tests/generate_fake_xlsx.py
+          npm install --no-save --no-package-lock --ignore-scripts @xmldom/xmldom@0.9.8
+          node tests/test-xlsx-reader.mjs
