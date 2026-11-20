@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Prueba local de alícuotas</title>
+<style>body{font:1rem/1.55 system-ui;color:#173746;max-width:40rem;margin:8vh auto;padding:1rem}a{color:#006661}input{max-width:100%}output{display:block;margin-top:1rem;font-weight:bold}</style>
+<h1>Prueba local de alícuotas</h1>
+<p>En tu PC Windows, guarda el Excel de demostración en tu carpeta personal de OneDrive. Mantén el archivo tal como lo descargaste.</p>
+<p><a id="demo" download="Alicuotas-ficticias.xlsx">Descargar Excel ficticio</a></p>
+<label for="libro">Selecciona ese mismo archivo desde la carpeta de OneDrive</label>
+<p><input id="libro" type="file" accept=".xlsx"></p>
+<output id="resultado" role="status">Esperando el Excel ficticio.</output>
+<script>
+// Lector de XLSX local: no envía contenido a servidores ni utiliza bibliotecas externas.
+// Soporta hojas Office Open XML estándar (ZIP), cadenas compartidas y celdas numéricas.
+// Las filas se ofrecen para revisión; nunca se confirman congelaciones automáticamente.
+const SCHEMAS={
+ 'ALMACENAMIENTO DE ALICUOTAS':{first:2,fields:['study','sampleType','subject','visit','barcode','aliquotType','pivot','qty','freezer','drawer','box','position','operator','entryDate','note','cyclicCount','cyclicDate','cyclicOperator','cyclicNote','validation','validationDate','validationOperator','validationNote'],kind:'aliquot'},
+ 'SALIDA DE MUESTRA':{first:1,fields:['study','sampleType','subject','visit','barcode','aliquotType','pivot','qty','trackingCode','exitDate','guide','operator','note'],kind:'exit'}
+};
+const td=new TextDecoder('utf-8');
+function read16(v,p){return v.getUint16(p,true)}
+function read32(v,p){return v.getUint32(p,true)}
+function xml(bytes){
+ const value=td.decode(bytes);
+ if(/<!DOCTYPE|<!ENTITY/i.test(value))throw Error('El libro contiene declaraciones XML no admitidas.');
+ const doc=new DOMParser().parseFromString(value,'application/xml');
+ if(doc.getElementsByTagName('parsererror').length)throw Error('XML no válido en el Excel.');
+ return doc;
+}
+function elements(parent,name){return Array.from(parent.getElementsByTagName(name))}
+function textAt(parent,tag){return parent.getElementsByTagName(tag)[0]?.textContent??''}
+function columnNumber(ref){const match=/^([A-Z]+)\d+$/i.exec(ref);if(!match)return 0;let n=0;for(const c of match[1].toUpperCase())n=n*26+c.charCodeAt(0)-64;return n}
+function excelDate(value){
+ if(typeof value!=='number'||!Number.isFinite(value)||value<1||value>120000)return value;
+ return new Date(Date.UTC(1899,11,30)+Math.floor(value)*86400000).toISOString().slice(0,10);
+}
+async function unzip(content){
+ const bytes=new Uint8Array(content),view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+ let end=-1;
+ for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--){if(read32(view,i)===0x06054b50){end=i;break}}
+ if(end<0)throw Error('El archivo no es un XLSX ZIP válido.');
+ if(read16(view,end+4)!==0||read16(view,end+6)!==0)throw Error('No se admiten ZIP de varios volúmenes.');
+ const count=read16(view,end+10),offset=read32(view,end+16),entries=new Map();
+ if(count>2000||offset>bytes.length)throw Error('Excel con demasiados componentes.');
+ let at=offset;
+ for(let i=0;i<count;i++){
+  if(at+46>bytes.length||read32(view,at)!==0x02014b50)throw Error('Índice XLSX inválido.');
+  const method=read16(view,at+10),compressed=read32(view,at+20),original=read32(view,at+24),n=read16(view,at+28),extra=read16(view,at+30),comment=read16(view,at+32),local=read32(view,at+42);
+  const name=td.decode(bytes.subarray(at+46,at+46+n));
+  if(original>25_000_000||compressed>15_000_000)throw Error('Un componente del Excel supera el límite seguro.');
+  if(name.startsWith('xl/')&&(/\.xml$/.test(name)||name==='xl/_rels/workbook.xml.rels'))entries.set(name,{method,compressed,original,local});
+  at+=46+n+extra+comment;
+ }
+ let decoded=0;
+ async function read(name,optional=false){
+  const item=entries.get(name);
+  if(!item){if(optional)return null;throw Error('Falta un componente obligatorio del Excel.')}
+  const {method,compressed,original,local}=item;
+  if(local+30>bytes.length||read32(view,local)!==0x04034b50)throw Error('Componente XLSX corrupto.');
+  const at=local+30+read16(view,local+26)+read16(view,local+28);
+  if(at+compressed>bytes.length)throw Error('Componente XLSX incompleto.');
+  const raw=bytes.subarray(at,at+compressed);
+  let value;
+  if(method===0)value=raw;
+  else if(method===8){
+   if(typeof DecompressionStream==='undefined')throw Error('Este navegador no admite leer XLSX. Abre la app en Chrome actualizado.');
+   try{
+    const stream=new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    value=new Uint8Array(await new Response(stream).arrayBuffer());
+   }catch(_){throw Error('No se pudo descomprimir el Excel. Descarga una copia XLSX estándar.')}
+  }else throw Error('Compresión XLSX no compatible.');
+  if(value.length!==original)throw Error('El contenido XLSX está incompleto.');
+  decoded+=value.length;if(decoded>60_000_000)throw Error('Excel demasiado grande para importación segura.');
+  return value;
+ }
+ return read;
+}
+function cellValue(c,strings){
+ const type=c.getAttribute('t')||'';
+ if(type==='e')return '';
+ if(type==='inlineStr')return textAt(c,'is').trim();
+ const value=textAt(c,'v');
+ if(type==='s')return strings[Number(value)]??'';
+ if(type==='b')return value==='1'?'Sí':'No';
+ if(!value)return '';
+ if(!['str','d','inlineStr'].includes(type)&&Number.isFinite(Number(value)))return Number(value);
+ return value.trim();
+}
+function sheetRows(doc,strings,name,schema){
+ const found=[];
+ for(const row of elements(doc,'row')){
+  const number=Number(row.getAttribute('r'));
+  if(!Number.isInteger(number)||number<4)continue;
+  const values=Array(schema.fields.length).fill('');
+  for(const cell of elements(row,'c')){
+   const col=columnNumber(cell.getAttribute('r')||'');
+   const i=col-schema.first;
+   if(i>=0&&i<values.length)values[i]=cellValue(cell,strings);
+  }
+  const data={sheetKind:schema.kind};
+  for(let i=0;i<schema.fields.length;i++){
+   const key=schema.fields[i];
+   let value=values[i];
+   if(typeof value==='string')value=value.trim();
+   if(key==='qty')value=value===''?'':Number(value);
+   if(/Date$/.test(key)&&typeof value==='number')value=excelDate(value);
+   data[key]=value;
+  }
+  if(!['study','subject','barcode'].some(k=>String(data[k]??'').trim()))continue;
+  found.push({sheet:name,row:number,data});
+  if(found.length>20000)throw Error('La hoja contiene más de 20 000 filas. Divide una copia del Excel.');
+ }
+ return found;
+}
+async function readAliquotXlsx(file){
+ if(!file||!file.name.toLowerCase().endsWith('.xlsx'))throw Error('Selecciona un archivo Excel .xlsx.');
+ if(!file.size||file.size>15_000_000)throw Error('El archivo debe ser XLSX y pesar como máximo 15 MB.');
+ const get=await unzip(await file.arrayBuffer());
+ const wb=xml(await get('xl/workbook.xml')),rels=xml(await get('xl/_rels/workbook.xml.rels'));
+ const relationships=new Map(elements(rels,'Relationship').map(r=>[r.getAttribute('Id'),r.getAttribute('Target')]));
+ const stringsFile=await get('xl/sharedStrings.xml',true),strings=[];
+ if(stringsFile){const ss=xml(stringsFile);for(const item of elements(ss,'si'))strings.push(elements(item,'t').map(t=>t.textContent).join(''));}
+ const result=[],available=[];
+ for(const sheet of elements(wb,'sheet')){
+  const name=sheet.getAttribute('name'),schema=SCHEMAS[name];
+  if(!schema)continue;
+  available.push(name);
+  const target=relationships.get(sheet.getAttribute('r:id'));
+  if(!target)throw Error('Una hoja de Excel no tiene una referencia válida.');
+  const path=target.startsWith('/')?target.slice(1):target.startsWith('xl/')?target:'xl/'+target;
+  if(!/^xl\/worksheets\/[a-zA-Z0-9._-]+\.xml$/.test(path))throw Error('Ruta de hoja Excel no válida.');
+  const rows=sheetRows(xml(await get(path)),strings,name,schema);
+  result.push(...rows);
+  if(result.length>20000)throw Error('El Excel supera 20 000 filas; utiliza un archivo más pequeño.');
+ }
+ if(!available.length)throw Error('El libro no contiene las hojas ALMACENAMIENTO DE ALICUOTAS o SALIDA DE MUESTRA.');
+ return {rows:result,sheets:available};
+}
+
+const demo = Uint8Array.from(atob('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'), ch => ch.charCodeAt(0));
+document.getElementById('demo').href = URL.createObjectURL(new Blob([demo], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+const selector = document.getElementById('libro');
+const statusText = document.getElementById('resultado');
+selector.addEventListener('change', async () => {
+ const file = selector.files[0];
+ if (!file) return;
+ selector.disabled = true;
+ try {
+  if (file.size !== demo.length || !(new Uint8Array(await file.arrayBuffer())).every((byte, i) => byte === demo[i])) {
+   throw Error('Este archivo es distinto del Excel ficticio. Selecciona la copia descargada aquí.');
+  }
+  const {rows} = await readAliquotXlsx(file);
+  const stored = rows.filter(row => row.data.sheetKind === 'aliquot').length;
+  const exits = rows.filter(row => row.data.sheetKind === 'exit').length;
+  statusText.textContent = 'Lectura local completada. Almacenamiento: ' + stored + ' fila. Salida: ' + exits + ' fila. Envíos a Firebase: 0.';
+ } catch (error) {
+  statusText.textContent = error.message;
+ } finally {
+  selector.value = '';
+  selector.disabled = false;
+ }
+});
+</script></html>
