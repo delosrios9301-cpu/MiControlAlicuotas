@@ -10,7 +10,7 @@ def replace(old,new,tag):
  n=s.count(old)
  if n!=1:raise RuntimeError(f'{tag}: esperaba 1 coincidencia, había {n}')
  s=s.replace(old,new,1)
-input_html='''<section class="card"><div class="card-head"><h3>Leer registros del Excel</h3><span class="badge blue">En este dispositivo</span></div><p class="small muted">Selecciona tu XLSX desde OneDrive o Descargas. La app leerá las hojas de alícuotas y salidas sin cambiar el archivo. Las filas se mostrarán para revisión; no se confirma ninguna congelación automáticamente.</p><label for="manualExcelInput" class="btn primary">Seleccionar Excel para importar</label><input id="manualExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><p class="small muted mt">Puedes volver a seleccionar el mismo archivo después de guardar cambios; se revisan las filas nuevas o modificadas sin crear duplicados. Por ahora esta lectura es manual, no sincronización automática de OneDrive.</p></section>'''
+input_html='''<section class="card"><div class="card-head"><h3>Leer registros del Excel</h3><span class="badge blue">En este dispositivo</span></div><p class="small muted">Selecciona tu XLSX desde OneDrive o Descargas. La app leerá las hojas de alícuotas y salidas sin cambiar el archivo. Las filas se mostrarán para revisión; no se confirma ninguna congelación automáticamente.</p><div class="field"><label for="manualExcelInput"><strong>Seleccionar Excel para importar</strong></label><input id="manualExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Elegir archivo XLSX desde el teléfono"></div><p class="small muted mt">Puedes volver a seleccionar el mismo archivo después de guardar cambios; se revisan las filas nuevas o modificadas sin crear duplicados. Por ahora esta lectura es manual, no sincronización automática de OneDrive.</p></section>'''
 replace('''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''',input_html+'''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''','sección Mi Excel')
 # Mostrar todas las filas con paginación compacta, incluso en teléfonos.
 replace('captureCursor:0,query:', 'captureCursor:0,captureLimit:80,query:', 'estado de paginación')
@@ -93,7 +93,7 @@ sw=Path('site/sw.js')
 cache=sw.read_text(encoding='utf8')
 tag="mis-alicuotas-shell-github-20261120-firebase-pendientes"
 if cache.count(tag)!=1:raise RuntimeError('Versión esperada del caché PWA no coincide.')
-cache=cache.replace(tag,'mis-alicuotas-shell-github-20261120-importacion-xlsx')
+cache=cache.replace(tag,'mis-alicuotas-shell-github-20261120-selector-excel-visible')
 anchor="'./app.js',"
 if cache.count(anchor)!=1:raise RuntimeError('No se halló lista de recursos PWA.')
 cache=cache.replace(anchor,anchor+"'./xlsx-reader.js',")
