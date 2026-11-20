@@ -12,6 +12,11 @@ def replace(old,new,tag):
  s=s.replace(old,new,1)
 input_html='''<section class="card"><div class="card-head"><h3>Leer registros del Excel</h3><span class="badge blue">En este dispositivo</span></div><p class="small muted">Selecciona tu XLSX desde OneDrive o Descargas. La app leerá las hojas de alícuotas y salidas sin cambiar el archivo. Las filas se mostrarán para revisión; no se confirma ninguna congelación automáticamente.</p><label for="manualExcelInput" class="btn primary">Seleccionar Excel para importar</label><input id="manualExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><p class="small muted mt">Puedes volver a seleccionar el mismo archivo después de guardar cambios; se revisan las filas nuevas o modificadas sin crear duplicados. Por ahora esta lectura es manual, no sincronización automática de OneDrive.</p></section>'''
 replace('''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''',input_html+'''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''','sección Mi Excel')
+# Mostrar todas las filas con paginación compacta, incluso en teléfonos.
+replace('captureCursor:0,query:', 'captureCursor:0,captureLimit:80,query:', 'estado de paginación')
+replace(")).slice(0,80);return heading('Sincronización y recuperación'", ")).slice(0,S.captureLimit);return heading('Sincronización y recuperación'", 'límite de capturas')
+replace("No hay capturas recibidas. Inicia el conector Windows y realiza una modificación confirmada en Excel para comprobar el registro.</div>'}</section>", "No hay capturas recibidas. En «Mi Excel» selecciona el XLSX para importarlo desde tu teléfono, o autoriza la conexión automática OneDrive.</div>'}${rows.length<S.captures.length?button('more-captures','Mostrar 80 más','btn'):''}</section>", 'ver más y mensaje vacío')
+replace("case'cloud-sync':", "case'more-captures':S.captureLimit+=80;render();return;case'cloud-sync':", 'paginación de capturas')
 # Leer archivo y almacenar capturas solo locales, evitando identidades reemplazadas o filas movidas.
 s+='''
 
