@@ -14,9 +14,9 @@ patch("La PC envía cambios autorizados mediante Firebase; el teléfono no lee E
  "Para leer tu Excel en el teléfono, entra en Mi Excel y selecciona el archivo XLSX. Las filas compartidas por Firebase se contabilizan aparte.",'instrucción Android')
 patch(" const enabled=Boolean(S.settings.excelMirrorEnabled);",
  " const enabled=Boolean(S.settings.excelMirrorEnabled);\n const localExcelCount=S.captures.filter(c=>c.sourceOrigin==='manual-xlsx').length;",'recuento local')
-patch(" consentUI+\n ${renderCloudPanel()}<section",
+patch(" consentUI+\n `${renderCloudPanel()}<section",
  """ consentUI+
  `<p class="small muted">Capturas XLSX guardadas en este dispositivo: <strong>${number(localExcelCount)}</strong>. Este contador es distinto de «filas compartidas» desde Firebase. Puedes revisarlas más abajo en «Capturas Excel para revisar». ${button('nav-excel','Ver mi Excel','btn small')}</p>`+
- ${renderCloudPanel()}<section""",'recuento separado')
+ `${renderCloudPanel()}<section""",'recuento separado')
 p.write_text(s,encoding='utf8')
 print('Contadores XLSX y Firebase diferenciados; instrucciones Android corregidas.')
