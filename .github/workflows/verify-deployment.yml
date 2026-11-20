@@ -25,7 +25,7 @@ jobs:
           base=os.environ["SITE_ROOT"].rstrip("/")
           files=["/index.html", "/sw.js", "/cloud.js", "/app.js"]
           expected={
-              "/sw.js": "mis-alicuotas-shell-github-20261120-excel-central",
+              "/sw.js": "mis-alicuotas-shell-github-20261120-firebase-pendientes",
               "/cloud.js": "return `projects/${safe(config.projectId)}/databases/(default)/documents/owners/",
               "/app.js": "function renderExcelHub()",
               "/index.html": 'data-page="mi-excel"',

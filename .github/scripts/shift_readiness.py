@@ -20,7 +20,7 @@ checks={
   'migración no destructiva': 'DB_VERSION=4' in db and "db.createObjectStore(name,{keyPath})" in db,
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
-  'versión pwa': "mis-alicuotas-shell-github-20261120-excel-central" in sw,
+  'versión pwa': "mis-alicuotas-shell-github-20261120-firebase-pendientes" in sw,
 }
 for name,ok in checks.items():
     if not ok:
