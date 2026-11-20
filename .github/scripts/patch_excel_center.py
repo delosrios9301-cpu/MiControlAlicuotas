@@ -58,6 +58,9 @@ patch('app.js', "async function onForm(form){const formId=form.getAttribute('id'
 patch('app.js', "#modalRoot form,#profileForm", "#modalRoot form,#profileForm,#excelHubForm")
 patch('app.js', "'outbox','conflicts','mirrors'].map(all)", "'outbox','conflicts','mirrors','workbooks'].map(all)")
 patch('app.js', "S.mirrors=rows[8];S.captureCursor", "S.mirrors=rows[8];S.workbooks=rows[9];S.captureCursor")
+# El vínculo privado de Excel permanece local hasta verificar reglas Firestore.
+# No contarlo como operación clínica pendiente, sin borrar su trabajo en cola.
+patch('app.js', "S.cloudPending=rows[6].length;", "S.cloudPending=rows[6].filter(job=>job.table!=='workbooks'||window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;")
 patch('app.js', "${button('nav-sync','⟳ Revisar capturas Excel','btn')}", "${button('nav-sync','⟳ Revisar capturas Excel','btn')}${button('nav-excel','▤ Abrir mi Excel','btn')}")
 patch('index.html', '<button data-page="sincronizacion">', '<button data-page="mi-excel"><span class="ico">▤</span>Mi Excel</button><button data-page="sincronizacion">')
 # Cache bust para que el nuevo enlace aparezca en Android y Windows.
