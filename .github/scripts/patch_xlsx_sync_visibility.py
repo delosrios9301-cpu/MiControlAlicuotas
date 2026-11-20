@@ -23,5 +23,10 @@ cache=sw.read_text(encoding='utf8')
 old='mis-alicuotas-shell-github-20261120-xlsx-result'
 if cache.count(old)!=1:raise RuntimeError('No se encontró versión PWA esperada para actualizar.')
 sw.write_text(cache.replace(old,'mis-alicuotas-shell-github-20261120-capturas-locales-visibles'),encoding='utf8')
+patch(
+ """<span class="badge ${online?'':'warn'}">${!isPc?'● Conexión vía Firebase':online?'● Excel conectado':'○ No vinculado'}</span>""",
+ """<span class="badge ${isPc?(online?'':'warn'):(cloudOk?'':'warn')}">${!isPc?(cloudOk?'● Cuenta Firebase autenticada':'○ Cuenta Firebase sin sesión'):online?'● Excel conectado':'○ No vinculado'}</span>""",
+ 'corregir etiqueta Firebase que aparecía conectada sin autenticar'
+)
 p.write_text(s,encoding='utf8')
 print('Contadores XLSX y Firebase diferenciados; instrucciones Android corregidas.')
