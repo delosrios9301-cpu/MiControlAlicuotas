@@ -18,5 +18,10 @@ patch(" consentUI+\n `${renderCloudPanel()}<section",
  """ consentUI+
  `<p class="small muted">Capturas XLSX guardadas en este dispositivo: <strong>${number(localExcelCount)}</strong>. Este contador es distinto de «filas compartidas» desde Firebase. Puedes revisarlas más abajo en «Capturas Excel para revisar». ${button('nav-excel','Ver mi Excel','btn small')}</p>`+
  `${renderCloudPanel()}<section""",'recuento separado')
+sw=Path('site/sw.js')
+cache=sw.read_text(encoding='utf8')
+old='mis-alicuotas-shell-github-20261120-xlsx-result'
+if cache.count(old)!=1:raise RuntimeError('No se encontró versión PWA esperada para actualizar.')
+sw.write_text(cache.replace(old,'mis-alicuotas-shell-github-20261120-capturas-locales-visibles'),encoding='utf8')
 p.write_text(s,encoding='utf8')
 print('Contadores XLSX y Firebase diferenciados; instrucciones Android corregidas.')
