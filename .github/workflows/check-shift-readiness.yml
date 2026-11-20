@@ -25,6 +25,8 @@ jobs:
           content=Path('site/app.js').read_text()
           pos=content.find('function renderSync()')
           print('PRUEBA-RENDER:',repr(content[pos:pos+270]))
+          tail=content.find('No hay capturas recibidas')
+          print('PRUEBA-FIN-RENDER:',repr(content[tail:tail+350]))
           PY
           python3 .github/scripts/patch_xlsx_import.py
           node --check site/xlsx-reader.js
