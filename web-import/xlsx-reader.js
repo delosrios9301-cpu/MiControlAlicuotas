@@ -36,7 +36,7 @@ async function unzip(content){
   const method=read16(view,at+10),compressed=read32(view,at+20),original=read32(view,at+24),n=read16(view,at+28),extra=read16(view,at+30),comment=read16(view,at+32),local=read32(view,at+42);
   const name=td.decode(bytes.subarray(at+46,at+46+n));
   if(original>25_000_000||compressed>15_000_000)throw Error('Un componente del Excel supera el límite seguro.');
-  if(name.startsWith('xl/')&&/\.xml$/.test(name))entries.set(name,{method,compressed,original,local});
+  if(name.startsWith('xl/')&&(/\.xml$/.test(name)||name==='xl/_rels/workbook.xml.rels'))entries.set(name,{method,compressed,original,local});
   at+=46+n+extra+comment;
  }
  let decoded=0;
