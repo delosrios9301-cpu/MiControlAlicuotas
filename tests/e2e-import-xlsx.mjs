@@ -8,7 +8,7 @@ page.on('pageerror',e=>errors.push(String(e.message)));
 page.on('console',msg=>{if(msg.type()==='error')logs.push(msg.text());});
 page.on('dialog',dialog=>dialog.accept());
 try {
- await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:30000});
+ await page.goto('http://127.0.0.2:8765/',{waitUntil:'domcontentloaded',timeout:30000});
  await page.waitForTimeout(1200);
  // La navegación de la app usa data-page en el menú; en móvil puede estar oculto.
  const found=await page.locator('[data-page="mi-excel"]').count();
@@ -27,6 +27,8 @@ try {
  console.log('E2E_SYNC:',sync.slice(0,1700));
  console.log('E2E_JS_ERRORS:',errors);
  console.log('E2E_CONSOLE_ERRORS:',logs);
+ assert.ok(sync.includes('Capturador de Windows (equipo separado)'),'En móvil se muestran instrucciones erróneas de PC');
+ assert.ok(sync.includes('Capturas Excel para revisar'),'No se muestra lista de capturas Excel');
  assert.ok(result.includes('Filas de Excel guardadas localmente'),'No se informa resultado de importación');
  assert.ok(result.includes('2'),'No aparecen las dos filas ficticias en el resultado');
  assert.ok(!errors.length,'La aplicación tuvo errores de ejecución: '+errors.join('; '));
