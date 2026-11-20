@@ -8,6 +8,7 @@ on:
       - 'web-import/xlsx-reader.js'
       - '.github/scripts/patch_xlsx_import.py'
       - '.github/scripts/patch_xlsx_import_status.py'
+      - '.github/scripts/patch_xlsx_sync_visibility.py'
 permissions:
   contents: read
 jobs:
@@ -26,6 +27,7 @@ jobs:
           cp web-import/xlsx-reader.js site/xlsx-reader.js
           python3 .github/scripts/patch_xlsx_import.py
           python3 .github/scripts/patch_xlsx_import_status.py
+          python3 .github/scripts/patch_xlsx_sync_visibility.py
           node --check site/xlsx-reader.js
           python3 .github/scripts/shift_readiness.py
           node --check site/app.js
