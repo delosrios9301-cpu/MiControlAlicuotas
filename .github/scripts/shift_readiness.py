@@ -13,7 +13,7 @@ checks={
   'dominios restringidos': "const hosts=new Set(['onedrive.live.com','1drv.ms'" in app,
   'no copia de xlsx': 'La app guardará la referencia' in app and 'no una copia del Excel' in app,
   'sync de vínculo': "'workbooks'" in cloud and "'workbooks'" in db,
-  'migración no destructiva': 'DB_VERSION=3' in db and "db.createObjectStore(name,{keyPath})" in db,
+  'migración no destructiva': 'DB_VERSION=4' in db and "db.createObjectStore(name,{keyPath})" in db,
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
   'versión pwa': "mis-alicuotas-shell-github-20261120-excel-central" in sw,
