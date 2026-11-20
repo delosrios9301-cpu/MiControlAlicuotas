@@ -44,6 +44,9 @@ jobs:
           python3 .github/scripts/patch_web_cloud.py
           python3 .github/scripts/patch_onedrive_history_ui.py
           python3 .github/scripts/patch_excel_center.py
+          cp web-import/xlsx-reader.js site/xlsx-reader.js
+          python3 .github/scripts/patch_xlsx_import.py
+          node --check site/xlsx-reader.js
           node --check site/db.js
           node --check site/cloud.js
           node --check site/app.js
