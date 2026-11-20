@@ -29,6 +29,7 @@ try {
  console.log('E2E_CONSOLE_ERRORS:',logs);
  assert.ok(sync.includes('Capturador de Windows (equipo separado)'),'En móvil se muestran instrucciones erróneas de PC');
  assert.ok(sync.includes('Capturas Excel para revisar'),'No se muestra lista de capturas Excel');
+ assert.ok(sync.includes('Capturas XLSX guardadas en este dispositivo:'),'No se diferencian capturas locales de filas compartidas Firebase');
  assert.ok(result.includes('Filas de Excel guardadas localmente'),'No se informa resultado de importación');
  assert.ok(result.includes('2'),'No aparecen las dos filas ficticias en el resultado');
  assert.ok(!errors.length,'La aplicación tuvo errores de ejecución: '+errors.join('; '));
