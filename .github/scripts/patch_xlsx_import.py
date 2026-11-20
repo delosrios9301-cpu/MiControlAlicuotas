@@ -81,5 +81,15 @@ document.addEventListener('change',async ev=>{
  try{await importXlsxOnDevice(file);}catch(err){toast('No se pudo leer el Excel: '+(err?.message||'archivo incompatible'),true);}
 });
 '''
+# El lector también estará disponible sin conexión después de una visita online.
+sw=Path('site/sw.js')
+cache=sw.read_text(encoding='utf8')
+tag="mis-alicuotas-shell-github-20261120-firebase-pendientes"
+if cache.count(tag)!=1:raise RuntimeError('Versión esperada del caché PWA no coincide.')
+cache=cache.replace(tag,'mis-alicuotas-shell-github-20261120-importacion-xlsx')
+anchor="'./app.js',"
+if cache.count(anchor)!=1:raise RuntimeError('No se halló lista de recursos PWA.')
+cache=cache.replace(anchor,anchor+"'./xlsx-reader.js',")
+sw.write_text(cache,encoding='utf8')
 file.write_text(s,encoding='utf8')
 print('Importación XLSX local preparada: revisión explícita, sin duplicar ni confirmar alícuotas.')
