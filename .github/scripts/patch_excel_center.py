@@ -72,6 +72,6 @@ patch('app.js', '<div class="cloud-grid">', '''${b?`<p class="small muted">Vínc
 p=root/'sw.js';s=p.read_text(encoding='utf8');lines=s.splitlines(keepends=True)
 found=[i for i,line in enumerate(lines) if line.strip().startswith('const CACHE=')]
 if len(found)!=1:raise RuntimeError('Falta versión de caché')
-lines[found[0]]="const CACHE='mis-alicuotas-shell-github-20261120-excel-central';\n"
+lines[found[0]]="const CACHE='mis-alicuotas-shell-github-20261120-firebase-pendientes';\n"
 p.write_text(''.join(lines),encoding='utf8')
 print('Mi Excel integrado en app y menú; no se almacenan bytes de XLSX en Pages ni Firestore.')
