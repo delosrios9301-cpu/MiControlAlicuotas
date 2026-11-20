@@ -43,6 +43,8 @@ jobs:
         run: |
           python3 .github/scripts/patch_web_cloud.py
           python3 .github/scripts/patch_onedrive_history_ui.py
+          python3 .github/scripts/patch_excel_center.py
+          node --check site/db.js
           node --check site/cloud.js
           node --check site/app.js
       - name: Configurar Pages
