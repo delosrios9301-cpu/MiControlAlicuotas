@@ -11,15 +11,15 @@ def patch(path, old, new):
         raise RuntimeError(f'{path}: esperaba 1 coincidencia y encontró {n} de {old[:60]!r}')
     p.write_text(text.replace(old,new,1),encoding='utf8')
 
-patch('db.js', "DB_VERSION=2", "DB_VERSION=3")
+patch('db.js', "DB_VERSION=3", "DB_VERSION=4")
 patch('db.js', "freezers:'id',captures:'id'", "freezers:'id',workbooks:'id',captures:'id'")
-patch('db.js', "new Set(['records','shifts','freezers','audit'])", "new Set(['records','shifts','freezers','audit','workbooks'])")
-patch('db.js', "['settings','records','shifts','freezers','audit','outbox']", "['settings','records','shifts','freezers','audit','workbooks','outbox']")
+patch('db.js', "new Set(['records','shifts','freezers','audit','mirrors'])", "new Set(['records','shifts','freezers','audit','mirrors','workbooks'])")
+patch('db.js', "['settings','records','shifts','freezers','audit','mirrors','outbox']", "['settings','records','shifts','freezers','audit','mirrors','workbooks','outbox']")
 # Libros enlazados en copia de seguridad opcional; respaldo viejo compatible.
 patch('db.js', "freezers:await all('freezers'),captures:", "freezers:await all('freezers'),workbooks:await all('workbooks'),captures:")
-patch('db.js', "['records','shifts','freezers','captures','audit','settings','outbox','cloudVersions','conflicts']", "['records','shifts','freezers','workbooks','captures','audit','settings','outbox','cloudVersions','conflicts']")
-patch('db.js', "for(const key of ['records','shifts','freezers','captures','audit','settings']){const store=tx.objectStore(key);store.clear();for(const row of json[key])store.put(row);}", "for(const key of ['records','shifts','freezers','captures','audit','settings']){const store=tx.objectStore(key);store.clear();for(const row of json[key])store.put(row);}const books=tx.objectStore('workbooks');books.clear();for(const row of (Array.isArray(json.workbooks)?json.workbooks:[]))books.put(row);")
-patch('cloud.js', "new Set(['records','shifts','freezers','audit'])", "new Set(['records','shifts','freezers','audit','workbooks'])")
+patch('db.js', "['records','shifts','freezers','captures','mirrors','audit','settings','outbox','cloudVersions','conflicts']", "['records','shifts','freezers','workbooks','captures','mirrors','audit','settings','outbox','cloudVersions','conflicts']")
+patch('db.js', "const tx=db.transaction(['records','shifts','freezers','workbooks','captures','mirrors','audit','settings','outbox','cloudVersions','conflicts'],'readwrite');", "const tx=db.transaction(['records','shifts','freezers','workbooks','captures','mirrors','audit','settings','outbox','cloudVersions','conflicts'],'readwrite');const books=tx.objectStore('workbooks');books.clear();for(const row of (Array.isArray(json.workbooks)?json.workbooks:[]))books.put(row);")
+patch('cloud.js', "new Set(['records','shifts','freezers','audit','mirrors'])", "new Set(['records','shifts','freezers','audit','mirrors','workbooks'])")
 patch('app.js', "'reportes','sincronizacion','configuracion'", "'reportes','mi-excel','sincronizacion','configuracion'")
 patch('app.js', "freezers:[],captures:[]", "freezers:[],workbooks:[],captures:[]")
 patch('app.js', "function renderSettings(){", '''function validOneDriveLink(raw){
@@ -54,9 +54,8 @@ patch('app.js', "async function onForm(form){const formId=form.getAttribute('id'
  }
 ''')
 patch('app.js', "#modalRoot form,#profileForm", "#modalRoot form,#profileForm,#excelHubForm")
-patch('app.js', "'records','shifts','freezers','captures','audit','settings','outbox','conflicts'", "'records','shifts','freezers','workbooks','captures','audit','settings','outbox','conflicts'")
-patch('app.js', "[S.records,S.shifts,S.freezers,S.captures,S.audit]=rows.slice(0,5);S.settings=Object.fromEntries(rows[5]", "[S.records,S.shifts,S.freezers,S.workbooks,S.captures,S.audit]=rows.slice(0,6);S.settings=Object.fromEntries(rows[6]")
-patch('app.js', "S.cloudPending=rows[6].length;S.cloudConflicts=rows[7]", "S.cloudPending=rows[7].length;S.cloudConflicts=rows[8]")
+patch('app.js', "'outbox','conflicts','mirrors'].map(all)", "'outbox','conflicts','mirrors','workbooks'].map(all)")
+patch('app.js', "S.mirrors=rows[8];S.captureCursor", "S.mirrors=rows[8];S.workbooks=rows[9];S.captureCursor")
 patch('app.js', "${button('nav-sync','⟳ Revisar capturas Excel','btn')}", "${button('nav-sync','⟳ Revisar capturas Excel','btn')}${button('nav-excel','▤ Abrir mi Excel','btn')}")
 patch('index.html', '<button data-page="sincronizacion">', '<button data-page="mi-excel"><span class="ico">▤</span>Mi Excel</button><button data-page="sincronizacion">')
 # Cache bust para que el nuevo enlace aparezca en Android y Windows.
