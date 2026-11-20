@@ -18,6 +18,11 @@ jobs:
           base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
           python3 .github/scripts/patch_web_cloud.py
           python3 .github/scripts/patch_onedrive_history_ui.py
+          echo 'INICIO ESTADO REAL WEB'
+          head -n 18 site/db.js
+          sed -n '1,12p' site/app.js | cut -c 1-350
+          grep -nE 'function renderSettings|const views=|async function onForm|case\x27nav-sync\x27|function renderHome|DB_VERSION|SYNC_TABLES|table' site/db.js site/cloud.js site/app.js | cut -c 1-500 | head -24 || true
+          echo 'FIN ESTADO REAL WEB'
           python3 .github/scripts/patch_excel_center.py
           python3 .github/scripts/shift_readiness.py
           node --check site/app.js
