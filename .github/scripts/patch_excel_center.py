@@ -58,8 +58,16 @@ patch('app.js', "async function onForm(form){const formId=form.getAttribute('id'
 patch('app.js', "#modalRoot form,#profileForm", "#modalRoot form,#profileForm,#excelHubForm")
 patch('app.js', "'outbox','conflicts','mirrors'].map(all)", "'outbox','conflicts','mirrors','workbooks'].map(all)")
 patch('app.js', "S.mirrors=rows[8];S.captureCursor", "S.mirrors=rows[8];S.workbooks=rows[9];S.captureCursor")
+# El vínculo privado de Excel permanece local hasta verificar reglas Firestore.
+# No contarlo como operación clínica pendiente, sin borrar su trabajo en cola.
+patch('app.js', "S.cloudPending=rows[6].length;", "S.cloudPending=rows[6].filter(job=>job.table!=='workbooks'||window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;")
 patch('app.js', "${button('nav-sync','⟳ Revisar capturas Excel','btn')}", "${button('nav-sync','⟳ Revisar capturas Excel','btn')}${button('nav-excel','▤ Abrir mi Excel','btn')}")
 patch('index.html', '<button data-page="sincronizacion">', '<button data-page="mi-excel"><span class="ico">▤</span>Mi Excel</button><button data-page="sincronizacion">')
+# Mostrar el vínculo local por separado: nunca confundirlo con datos clínicos pendientes.
+patch('app.js', "cloudPending:0,cloudConflicts:[]", "cloudPending:0,workbookPending:0,cloudConflicts:[]")
+patch('app.js', "S.cloudPending=rows[6].filter(job=>job.table!=='workbooks'||window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;", "S.cloudPending=rows[6].filter(job=>job.table!=='workbooks'||window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;S.workbookPending=rows[6].filter(job=>job.table==='workbooks'&&!window.MCA_FIREBASE_CONFIG?.workbookSyncEnabled).length;")
+patch('app.js', "const c=cloud.getCloudStatus(),p=S.cloudPending,n=S.cloudConflicts.length;", "const c=cloud.getCloudStatus(),p=S.cloudPending,n=S.cloudConflicts.length,b=S.workbookPending;")
+patch('app.js', '<div class="cloud-grid">', '''${b?`<p class="small muted">Vínculo de Mi Excel guardado solo en este dispositivo; su envío entre dispositivos aún no está habilitado. No es un registro clínico pendiente.</p>`:''}<div class="cloud-grid">''')
 # Cache bust para que el nuevo enlace aparezca en Android y Windows.
 p=root/'sw.js';s=p.read_text(encoding='utf8');lines=s.splitlines(keepends=True)
 found=[i for i,line in enumerate(lines) if line.strip().startswith('const CACHE=')]
