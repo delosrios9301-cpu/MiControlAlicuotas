@@ -1,0 +1,29 @@
+name: Diagnosticar requisitos de OneDrive sin leer muestras
+on:
+  pull_request:
+    paths:
+      - 'onedrive-sync/check_readiness.py'
+      - '.github/workflows/onedrive-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluar requisitos sin conectar cuentas ni mover datos
+        env:
+          SYNC_ENABLED: ${{ vars.MCA_ONEDRIVE_SYNC_ENABLED }}
+          USER_AUTHORIZED: ${{ vars.MCA_ONEDRIVE_AUTHORIZED }}
+          ACCESS_METHOD: ${{ vars.ONEDRIVE_ACCESS_METHOD }}
+          DRIVE_ID: ${{ vars.ONEDRIVE_DRIVE_ID }}
+          RELATIVE_PATH: ${{ vars.ONEDRIVE_RELATIVE_PATH }}
+          ITEM_ID: ${{ vars.ONEDRIVE_ITEM_ID }}
+          CLIENT_ID: ${{ vars.ONEDRIVE_CLIENT_ID }}
+          OWNER_UID: ${{ vars.FIREBASE_OWNER_UID }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          SYNC_SERVICE_ACCOUNT: ${{ vars.GCP_SYNC_SERVICE_ACCOUNT }}
+          HAS_RCLONE_TOKEN: ${{ secrets.ONEDRIVE_RCLONE_TOKEN != '' }}
+          HAS_REFRESH_TOKEN: ${{ secrets.ONEDRIVE_REFRESH_TOKEN != '' }}
+        run: python3 onedrive-sync/check_readiness.py
