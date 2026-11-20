@@ -20,6 +20,12 @@ jobs:
           python3 .github/scripts/patch_onedrive_history_ui.py
           python3 .github/scripts/patch_excel_center.py
           cp web-import/xlsx-reader.js site/xlsx-reader.js
+          python3 - <<'PY'
+          from pathlib import Path
+          content=Path('site/app.js').read_text()
+          pos=content.find('function renderSync()')
+          print('PRUEBA-RENDER:',repr(content[pos:pos+270]))
+          PY
           python3 .github/scripts/patch_xlsx_import.py
           node --check site/xlsx-reader.js
           python3 .github/scripts/shift_readiness.py
