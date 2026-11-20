@@ -1,0 +1,19 @@
+name: Evaluar modo de turno móvil sin datos clínicos
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/check-shift-readiness.yml'
+      - '.github/scripts/shift_readiness.py'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extraer web y analizar funciones disponibles sin datos privados
+        run: |
+          set -e
+          mkdir -p site
+          base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
+          python3 .github/scripts/shift_readiness.py
