@@ -32,3 +32,9 @@ jobs:
           python3 tests/generate_fake_xlsx.py
           npm install --no-save --no-package-lock --ignore-scripts @xmldom/xmldom@latest
           node tests/test-xlsx-reader.mjs
+      - name: Comprobar importación real desde Chrome móvil con archivo ficticio
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@latest
+          npx playwright install chromium
+          python3 -m http.server 8765 --directory site > /tmp/aliquot-e2e-http.log 2>&1 &
+          node tests/e2e-import-xlsx.mjs
