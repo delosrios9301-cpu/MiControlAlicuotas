@@ -20,7 +20,11 @@ checks={
   'migración no destructiva': 'DB_VERSION=4' in db and "db.createObjectStore(name,{keyPath})" in db,
   'backup de vínculo': "workbooks:await all('workbooks')" in db,
   'restaurar backup antiguo': "Array.isArray(json.workbooks)?json.workbooks:[]" in db,
-  'versión pwa': "mis-alicuotas-shell-github-20261120-firebase-pendientes" in sw,
+  'importación local XLSX': 'readAliquotXlsx' in app and Path('site/xlsx-reader.js').is_file(),
+  'no congela Excel': "Las filas se mostrarán para revisión" in app,
+  'capturas locales': "await batch('captures',pending)" in app,
+  'contra filas duplicadas': "captureIdentity(prev.data)!==fp" in app,
+  'versión pwa': "mis-alicuotas-shell-github-20261120-importacion-xlsx" in sw,
 }
 for name,ok in checks.items():
     if not ok:

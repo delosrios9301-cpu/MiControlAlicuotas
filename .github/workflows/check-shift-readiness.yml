@@ -19,7 +19,15 @@ jobs:
           python3 .github/scripts/patch_web_cloud.py
           python3 .github/scripts/patch_onedrive_history_ui.py
           python3 .github/scripts/patch_excel_center.py
+          cp web-import/xlsx-reader.js site/xlsx-reader.js
+          python3 .github/scripts/patch_xlsx_import.py
+          node --check site/xlsx-reader.js
           python3 .github/scripts/shift_readiness.py
           node --check site/app.js
           node --check site/cloud.js
           node --check site/db.js
+      - name: Leer un XLSX ficticio con el parser de navegador (sin Excel clínico)
+        run: |
+          python3 tests/generate_fake_xlsx.py
+          npm install --no-save --no-package-lock --ignore-scripts @xmldom/xmldom@latest
+          node tests/test-xlsx-reader.mjs
