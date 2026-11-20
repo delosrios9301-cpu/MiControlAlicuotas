@@ -16,4 +16,10 @@ jobs:
           set -e
           mkdir -p site
           base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
+          python3 .github/scripts/patch_web_cloud.py
+          python3 .github/scripts/patch_onedrive_history_ui.py
+          python3 .github/scripts/patch_excel_center.py
           python3 .github/scripts/shift_readiness.py
+          node --check site/app.js
+          node --check site/cloud.js
+          node --check site/db.js
