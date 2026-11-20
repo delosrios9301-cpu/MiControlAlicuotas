@@ -8,7 +8,7 @@ service cloud.firestore {
       allow create, update: if request.auth != null && request.auth.uid == ownerId
         && request.resource.data.keys().hasOnly(['table','recordId','payload','revision','deleted','syncedAt'])
         && request.resource.data.keys().hasAll(['table','recordId','payload','revision','deleted','syncedAt'])
-        && request.resource.data.table in ['records','shifts','freezers','audit','mirrors']
+        && request.resource.data.table in ['records','shifts','freezers','audit','mirrors','workbooks']
         && request.resource.data.recordId is string
         && request.resource.data.recordId.size() <= 1500
         && request.resource.data.payload is string
