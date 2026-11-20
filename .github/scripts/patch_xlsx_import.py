@@ -14,7 +14,7 @@ input_html='''<section class="card"><div class="card-head"><h3>Leer registros de
 replace('''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''',input_html+'''<section class="card"><h3>Disponibilidad desde otros dispositivos</h3>''','sección Mi Excel')
 # Mostrar todas las filas con paginación compacta, incluso en teléfonos.
 replace('captureCursor:0,query:', 'captureCursor:0,captureLimit:80,query:', 'estado de paginación')
-replace(")).slice(0,80);return heading('Sincronización y recuperación'", ")).slice(0,S.captureLimit);return heading('Sincronización y recuperación'", 'límite de capturas')
+replace(")).slice(0,80);\n const isPc=", ")).slice(0,S.captureLimit);\n const isPc=", 'límite de capturas')
 replace("No hay capturas recibidas. Inicia el conector Windows y realiza una modificación confirmada en Excel para comprobar el registro.</div>'}</section>", "No hay capturas recibidas. En «Mi Excel» selecciona el XLSX para importarlo desde tu teléfono, o autoriza la conexión automática OneDrive.</div>'}${rows.length<S.captures.length?button('more-captures','Mostrar 80 más','btn'):''}</section>", 'ver más y mensaje vacío')
 replace("case'cloud-sync':", "case'more-captures':S.captureLimit+=80;render();return;case'cloud-sync':", 'paginación de capturas')
 # Leer archivo y almacenar capturas solo locales, evitando identidades reemplazadas o filas movidas.
