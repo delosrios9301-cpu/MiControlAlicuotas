@@ -4,6 +4,11 @@ on:
     paths:
       - '.github/workflows/check-shift-readiness.yml'
       - '.github/scripts/shift_readiness.py'
+      - 'tests/e2e-import-xlsx.mjs'
+      - 'web-import/xlsx-reader.js'
+      - '.github/scripts/patch_xlsx_import.py'
+      - '.github/scripts/patch_xlsx_import_status.py'
+      - '.github/scripts/patch_xlsx_sync_visibility.py'
 permissions:
   contents: read
 jobs:
@@ -22,6 +27,7 @@ jobs:
           cp web-import/xlsx-reader.js site/xlsx-reader.js
           python3 .github/scripts/patch_xlsx_import.py
           python3 .github/scripts/patch_xlsx_import_status.py
+          python3 .github/scripts/patch_xlsx_sync_visibility.py
           node --check site/xlsx-reader.js
           python3 .github/scripts/shift_readiness.py
           node --check site/app.js
@@ -32,3 +38,9 @@ jobs:
           python3 tests/generate_fake_xlsx.py
           npm install --no-save --no-package-lock --ignore-scripts @xmldom/xmldom@latest
           node tests/test-xlsx-reader.mjs
+      - name: Comprobar importación real desde Chrome móvil con archivo ficticio
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@latest
+          npx playwright install chromium
+          python3 -m http.server 8765 --directory site > /tmp/aliquot-e2e-http.log 2>&1 &
+          node tests/e2e-import-xlsx.mjs
