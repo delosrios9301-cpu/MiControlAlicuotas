@@ -1,8 +1,5 @@
 name: Verificar sitio publicado
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/verify-deployment.yml'
   workflow_run:
     workflows: ['Publicar Mi Control de Alícuotas']
     types: [completed]
