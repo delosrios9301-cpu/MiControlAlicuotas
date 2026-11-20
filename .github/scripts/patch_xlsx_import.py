@@ -27,18 +27,20 @@ async function importXlsxOnDevice(file){
  const {readAliquotXlsx}=await import('./xlsx-reader.js');
  const parsed=await readAliquotXlsx(file);
  if(parsed.rows.length===0)throw Error('No se encontraron filas de alícuotas en las hojas reconocidas.');
+ // Android/OneDrive pueden añadir (1), (2) al descargar el mismo XLSX.
+ const stableFileName=file.name.replace(/\\s*\\(\\d+\\)(?=\\.xlsx$)/i,'').trim();
  // Antes de guardar, detectar movimiento de filas o sustitución accidental.
  const byId=new Map(S.captures.map(c=>[c.id,c]));
  const byIdentity=new Map();
  for(const c of S.captures){
-  if(c.sourceOrigin!=='manual-xlsx'||c.sourceBook!==file.name)continue;
+  if(c.sourceOrigin!=='manual-xlsx'||c.sourceBook!==stableFileName)continue;
   const fp=captureIdentity(c.data);
   if(fp.replaceAll('|',''))byIdentity.set(c.sourceSheet+'|'+fp,c.id);
  }
  const pending=[];let unchanged=0,blocked=0,updated=0,created=0;
  const inFile=new Map();
  for(const r of parsed.rows){
-  const key='local-xlsx:'+file.name+'|'+r.sheet+'|'+r.row;
+  const key='local-xlsx:'+stableFileName+'|'+r.sheet+'|'+r.row;
   const fp=captureIdentity(r.data),sameSheet=r.sheet+'|'+fp;
   if(inFile.has(sameSheet)){blocked++;continue;}
   inFile.set(sameSheet,true);
@@ -49,7 +51,7 @@ async function importXlsxOnDevice(file){
   if(prev&&JSON.stringify(prev.data)===JSON.stringify(r.data)){unchanged++;continue;}
   const changes=!!prev;
   pending.push({
-   id:key,sourceBook:file.name,sourceSheet:r.sheet,sourceRow:r.row,
+   id:key,sourceBook:stableFileName,sourceSheet:r.sheet,sourceRow:r.row,
    sourceOrigin:'manual-xlsx',sourceEventId:Date.now(),timestamp:now(),
    data:r.data,importedAt:prev?.importedAt||null,
    importedRecordId:prev?.importedRecordId||null,
