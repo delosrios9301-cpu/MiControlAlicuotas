@@ -24,6 +24,7 @@ jobs:
           set -euo pipefail
           mkdir -p site
           base64 -d .deploy/web.xz.b64 | tar -xJf - -C site
+          cp onedrive-sync/Prueba-local-alicuotas.html site/prueba-local.html
           test -f site/index.html
           test -f site/app.js
           test -f site/sw.js
